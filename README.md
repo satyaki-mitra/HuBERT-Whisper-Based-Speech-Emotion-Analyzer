@@ -140,26 +140,33 @@ Then open your browser and go to: http://localhost:2024/
 
 ---
 
-## 🖥️ App Usage
+## Application Description:
 
-- Record Audio: Press and hold the microphone icon to record audio.
-
-- Upload Audio: Upload an existing .wav file.
-
-- Analyze: Click on Analyze Audio to view:
-
-  - Predicted Emotion
-
-  - Speech Transcription
----
-
-## 📁 Project Structure Overview
-
+In the app, one can either upload an existing audio file or record an audio for carrying-out the analysis results.
+For recording, one need to click and hold the microphone button appears there in the app interface.
+After recording or uploading a voice sample, the name of the audio clip will appear by the side of the buttons.
+After that, click the Analyze Audio button to get the respective audio's results carried-out by HuBERT and Whisper.
 
 ---
 
 ## 🧪 Sample Output
-"Analyzed: neutral emotion with transcription: 'I'm feeling alright today but it's been a long week.'"
+The application provides detailed emotion analysis with confidence scores across multiple emotions. Here's an example of what you can expect:
+Input Audio: "I'm feeling alright today but it's been a long week."
+Analysis Results:
+
+Transcription: English language detected
+Dominant Emotion: Neutral (99.89% confidence)
+Secondary Emotions:
+
+Sadness: 0.04%
+Fear: 0.02%
+Anger: 0.02%
+Surprise: 0.02%
+Happiness: 0.01%
+
+---
+
+## Sample Analysis from Screenshot:
 
 ## 📌 Notes
 
