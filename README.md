@@ -27,30 +27,10 @@ This app allows users to either **upload** or **record audio** in real time, and
 ## 🧠 Models Used
 
 ### 🔹 [HuBERT](https://arxiv.org/abs/2106.07447)
-Self-supervised model for speech representation learning, using **offline clustering** and **masked prediction loss**.
+Hidden Unit Bidirectional Encoder Representations from Transformers (HuBERT) is a self-supervised model that allows the BERT model to be applied to audio inputs. HuBERT uses **offline clustering** and **masked prediction loss** to learn both acoustic and language models from continuous inputs.
 
 ### 🔹 [Whisper](https://openai.com/research/whisper)
-OpenAI’s multilingual speech recognition model for **robust ASR**, handling noise and multiple accents effectively.
-
----
-
-## 🧠  Model Details
-
-### 🔹 HuBERT (Hidden-Unit BERT)
-Developed by Meta AI, HuBERT is a **self-supervised model** that learns speech representations by predicting masked regions in input audio based on pseudo-labels from clustering.
-
-### 🔹 Whisper
-Whisper is a general-purpose speech recognition system by OpenAI designed to be **noise-robust**, **multilingual**, and **open-domain**.
-
----
-
-## 🧰 Features
-
-- Emotion detection from speech using HuBERT
-- Transcription using Whisper
-- Record audio directly from browser or upload a `.wav` file
-- Simple Flask-based user interface
-- Fully offline support after model files are downloaded
+OpenAI's multilingual speech recognition model for **robust ASR**, handling noise and multiple accents effectively. Whisper is designed to be **noise-robust**, **multilingual**, and **open-domain**.
 
 ---
 
@@ -77,6 +57,7 @@ hubert-whisper-ser/
 ├── requirements.txt
 └── README.md
 ```
+
 ---
 
 ## 🚀 Quickstart Guide
@@ -87,7 +68,7 @@ Follow these steps to set up and run the application locally.
 
 ```bash
 git clone https://github.com/satyaki-mitra/HuBERT-Whisper-Based-Speech-Emotion-Analyzer.git
-cd hubert-whisper-ser
+cd HuBERT-Whisper-Based-Speech-Emotion-Analyzer
 ```
 
 ### 2️⃣ Create & Activate Conda Environment
@@ -95,6 +76,7 @@ cd hubert-whisper-ser
 conda create -n speech_emotion_env python=3.12.3
 conda activate speech_emotion_env
 ```
+
 ### 3️⃣ Install Dependencies
 Install FFmpeg (for audio handling) and Python dependencies:
 
@@ -108,6 +90,7 @@ sudo apt install ffmpeg
 # Python libraries
 pip install -r requirements.txt
 ```
+
 ### 4️⃣ Download Pretrained Model Files
 Download the pretrained models for offline usage as follows:
 
@@ -122,18 +105,16 @@ Download the pretrained models for offline usage as follows:
 - Place them into your local_model_files/hubert/ and local_model_files/whisper/ directories respectively.
 
 Final structure should look like:
-```markdown
-hubert-whisper-ser/
-│
+```bash
+HuBERT-Whisper-Based-Speech-Emotion-Analyzer/
 ├── app.py
-├── audio_analyzer.py
-├── hubert_predictor.py
-├── transcriber.py
-├── ...
-└── local_model_files/
-    ├── hubert/
-    ├── whisper/
-    └── ...
+├── flask_app/
+├── templates/
+├── static/
+├── data/
+├── local_model_files/
+├── requirements.txt
+└── README.md
 ```
 
 ### 5️⃣ Run the Flask App
@@ -145,44 +126,62 @@ Then open your browser and go to: http://localhost:2024/
 
 ---
 
-## Application Description:
+## 🎯 Application Description
 
 In the app, one can either upload an existing audio file or record an audio for carrying-out the analysis results.
+
 For recording, one need to click and hold the microphone button appears there in the app interface.
+
 After recording or uploading a voice sample, the name of the audio clip will appear by the side of the buttons.
-After that, click the Analyze Audio button to get the respective audio's results carried-out by HuBERT and Whisper.
+
+After that, click the `Analyze Audio` button to get the respective audio's results carried-out by HuBERT and Whisper.
 
 ---
 
 ## 🧪 Sample Output
+
 The application provides detailed emotion analysis with confidence scores across multiple emotions. Here's an example of what you can expect:
-Input Audio: "I'm feeling alright today but it's been a long week."
-Analysis Results:
 
-Transcription: English language detected
-Dominant Emotion: Neutral (99.89% confidence)
-Secondary Emotions:
+**Input Audio:** "I'm feeling alright today but it's been a long week."
 
-Sadness: 0.04%
-Fear: 0.02%
-Anger: 0.02%
-Surprise: 0.02%
-Happiness: 0.01%
+**Analysis Results:**
+- **Transcription:** English language detected
+- **Dominant Emotion:** Neutral (99.89% confidence)
+- **Secondary Emotions:** 
+  - Sadness: 0.04%
+  - Fear: 0.02% 
+  - Anger: 0.02%
+  - Surprise: 0.02%
+  - Happiness: 0.01%
+
+**Sample Analysis from Application:**
+```
+Transcription: "It's not a journey. Every journey ends, but we go on. 
+The world turns and we turn with it. Plans disappear. Dreams take over. 
+But wherever I go."
+
+Emotion Analysis:
+- Sadness: 99.89% (Dominant)
+- Anger: 0.02%
+- Fear: 0.02%
+- Happiness: 0.01%
+- Neutral: 0.02%
+- Surprise: 0.04%
+```
+
+The results are displayed in an easy-to-read table format showing both the transcribed text and emotion probability scores for six different emotions: **Anger**, **Fear**, **Happiness**, **Neutral**, **Sadness**, and **Surprise**.
 
 ---
 
-## Sample Analysis from Screenshot:
-
 ## 📌 Notes
 
-- Works best with clean, clear voice recordings.
-
-- Extendable to multi-language or gender-based emotion analysis.
-
-- Currently optimized for English.
+- Works best with clean, clear voice recordings
+- Extendable to multi-language or gender-based emotion analysis
+- Currently optimized for English
+- Supports real-time audio recording and file uploads
+- Fully offline capable after model download
 
 ---
 
 ## 📄 License
-MIT License © 2025 — [Satyaki Mitra]
-
+MIT License © 2025 — [Satyaki Mitra](https://github.com/satyaki-mitra)
