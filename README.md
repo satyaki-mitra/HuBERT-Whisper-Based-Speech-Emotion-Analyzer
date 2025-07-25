@@ -104,11 +104,17 @@ sudo apt install ffmpeg
 pip install -r requirements.txt
 ```
 ### 4️⃣ Download Pretrained Model Files
-Download the pretrained models for offline usage from this Google Drive link.
+Download the pretrained models for offline usage as follows:
 
-Unzip the downloaded file.
+- Visit facebook/hubert-base‑ls960 on Hugging Face.
 
-Place the folder named local_model_files directly inside the project directory.
+- Click "Download" to get the model files.
+
+- Visit openai/whisper-large‑v2 on Hugging Face.
+
+- Download the checkpoint files (*.pt) you need (e.g. base.en.pt, large-v2.pt).
+
+- Place them into your local_model_files/hubert/ and local_model_files/whisper/ directories respectively.
 
 Final structure should look like:
 ```markdown
