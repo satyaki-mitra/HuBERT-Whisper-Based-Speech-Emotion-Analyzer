@@ -1,0 +1,10 @@
+torch
+numpy
+transformers
+torchaudio
+librosa
+flask
+flask-sockets
+pydub
+openai-whisper
+flask-socketio
