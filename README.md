@@ -71,7 +71,7 @@ hubert-whisper-ser/
 ├── local_model_files/          # Offline HuBERT + Whisper models
 ├── requirements.txt
 └── README.md
-
+```
 ---
 
 ## 🚀 Quickstart Guide
