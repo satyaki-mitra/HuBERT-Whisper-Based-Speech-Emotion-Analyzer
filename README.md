@@ -81,7 +81,7 @@ Follow these steps to set up and run the application locally.
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/hubert-whisper-ser.git
+git clone https://github.com/satyaki-mitra/HuBERT-Whisper-Based-Speech-Emotion-Analyzer.git
 cd hubert-whisper-ser
 ```
 
