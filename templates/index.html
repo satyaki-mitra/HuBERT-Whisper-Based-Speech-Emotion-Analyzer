@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Speech Emotion Recognition</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+    <style>
+      body {
+        background-color: lightblue;
+        font-size: 16px;
+      }
+
+      .center {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .options {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 25px;
+        padding: 25px;
+      }
+
+      .option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .record-button {
+        font-size: 12px;
+        padding: 4px 6px;
+        border-radius: 20%;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+
+      .start-record-button {
+        background-color: #4caf50;
+      }
+
+      .stop-record-button {
+        background-color: #f44336;
+      }
+
+      .record-button:active {
+        opacity: 0.8;
+      }
+
+      .divider {
+        text-align: center;
+        font-weight: bold;
+      }
+
+      .analyze-button {
+        font-size: 15px;
+        padding: 4px 6px;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        background-color: #089d9b;
+      }
+
+      .analyze-button:hover {
+        opacity: 0.8;
+      }
+
+      .reset-button-container {
+        position: relative;
+        left: 35%;
+        margin-top: 20px;
+      }
+
+      .reset-button {
+        font-size: 18px;
+        padding: 6px 6px;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .analyze-button:hover,
+      .reset-button:hover {
+        opacity: 0.8;
+      }
+
+      .analyze-button {
+        background-color: #0dc3c0;
+      }
+
+      .reset-button {
+        background-color: #116b8c;
+      }
+
+      .button-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        flex-direction: row;
+      }
+
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .results-table th,
+      .results-table td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: center;
+        background-color: rgb(171, 180, 180);
+      }
+
+      .results-table th {
+        background-color: rgb(171, 180, 180);
+      }
+    </style>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
+  </head>
+  <body>
+    <div class="center">
+      <h1>Welcome to Speech Emotion Recognition Application</h1>
+      <h3>
+        (Powered by Automatic Speech Recognition (ASR) & Speech Emotion
+        Recognition (SER) Techniques)
+      </h3>
+      <div class="options center">
+        <div class="option">
+          <input
+            type="radio"
+            id="upload-option"
+            name="option"
+            onclick="toggleOptions('upload')"
+            checked
+          />
+          <label for="upload-option">Upload an audio file:</label>
+          <input type="file" id="file-input" onchange="handleFileChange()" />
+          <span id="uploaded-file-name"></span>
+          <button
+            class="analyze-button"
+            id="analyze-button"
+            onclick="analyzeUploadedAudio()"
+            disabled
+          >
+            Analyze Audio
+          </button>
+        </div>
+        <div class="divider">OR</div>
+        <div class="option">
+          <input
+            type="radio"
+            id="record-option"
+            name="option"
+            onclick="toggleOptions('record')"
+          />
+          <label for="record-option">Record a voice:</label>
+          <button
+            id="start-record-button"
+            class="record-button start-record-button"
+          >
+            <i class="fa fa-microphone"></i>
+            <span>Start Recording</span>
+          </button>
+          <button
+            id="stop-record-button"
+            class="record-button stop-record-button"
+            disabled
+          >
+            <i class="fa fa-stop"></i>
+            <span>Stop Recording</span>
+          </button>
+          <div id="record-label"></div>
+        </div>
+        <div class="reset-button-container">
+          <button class="reset-button" onclick="resetPage()">
+            Reset Everything
+          </button>
+        </div>
+      </div>
+      <h2>Analysis Result by Whisper & HuBERT:</h2>
+      <div id="results-table-container">
+        <!-- Results table will be dynamically populated here -->
+      </div>
+    </div>
+    <script>
+      const socket = io({
+        timeout: 600000,
+        reconnectionAttempts: 50,
+        reconnectionDelay: 1000,
+      });
+
+      const startRecordingButton = document.getElementById(
+        "start-record-button"
+      );
+      const stopRecordingButton = document.getElementById("stop-record-button");
+
+      // Define global variables
+      let uploadedFilePath = null;
+      let isSilent = false; // Start with the assumption that there is sound
+      let mediaRecorder;
+      let audioContext;
+      let recordingChunks = [];
+      let currentChunk = []; // Initialize the array to collect chunks
+      let chunkQueue = [];
+      let isProcessing = false;
+
+      async function handleFileChange() {
+        const fileInput = document.getElementById("file-input");
+
+        if (!fileInput.files.length) {
+          alert("Please select a file");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+          const response = await fetch("/upload_audio", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            uploadedFilePath = data.filePath;
+            enableAnalyzeButton();
+          } else {
+            alert("Error uploading file");
+          }
+        } catch (error) {
+          console.error("Upload error:", error);
+          alert("Error uploading file. Please try again.");
+        }
+      }
+
+      function enableAnalyzeButton() {
+        const analyzeButton = document.getElementById("analyze-button");
+        analyzeButton.disabled = false;
+      }
+
+      function displayResult(resultArray, isUpload = false) {
+        if (isUpload) {
+          updateTable(resultArray);
+        } else {
+          resultQueue.push(resultArray);
+
+          while (resultQueue.length > 0) {
+            const nextResult = resultQueue.shift();
+            updateTable(nextResult);
+          }
+
+          if (chunkQueue.length > 0) {
+            sendChunk(chunkQueue.shift());
+          }
+        }
+      }
+
+      function updateTable(resultArray) {
+        const resultsTableContainer = document.getElementById(
+          "results-table-container"
+        );
+        let table = resultsTableContainer.querySelector(".results-table");
+
+        if (!table) {
+          table = document.createElement("table");
+          table.className = "results-table";
+
+          const headerRow = document.createElement("tr");
+          const headers = [
+            "Transcription",
+            "Audio Language",
+            "Anger",
+            "Fear",
+            "Happiness",
+            "Neutral",
+            "Sadness",
+            "Surprise",
+          ];
+
+          headers.forEach((headerText) => {
+            const header = document.createElement("th");
+            header.textContent = headerText;
+            headerRow.appendChild(header);
+          });
+
+          table.appendChild(headerRow);
+          resultsTableContainer.innerHTML = "";
+          resultsTableContainer.appendChild(table);
+        }
+
+        const newRow = table.insertRow();
+
+        resultArray.forEach((resultObj) => {
+          for (const key in resultObj) {
+            const cell = document.createElement("td");
+            if (resultObj.hasOwnProperty(key) && key === "Transcription") {
+              cell.innerHTML = resultObj[key].replace(/\n/g, "<br>");
+            } else {
+              cell.textContent = resultObj[key];
+            }
+            newRow.appendChild(cell);
+          }
+        });
+      }
+
+      function analyzeUploadedAudio() {
+        socket.emit("analyze_uploaded_audio_by_chunks", {
+          filePath: uploadedFilePath,
+        });
+      }
+
+      socket.on("chunk_result", (resultArray) => {
+        console.log("Received chunk result:", resultArray);
+        displayResult(resultArray, true);
+      });
+
+      socket.on("error", (message) => {
+        console.error("Error:", message.message);
+      });
+
+      function resetPage() {
+        // Prompt the user before resetting
+        const confirmed = confirm(
+          "Are you sure you want to reset the page? Any unsaved data will be lost."
+        );
+
+        // If the user confirms, reload the page
+        if (confirmed) {
+          // Add a delay for better user experience
+          setTimeout(function () {
+            // Reload the page
+            location.reload();
+          }, 500);
+        }
+      }
+
+      function toggleOptions(option) {
+        const fileInput = document.getElementById("file-input");
+        const resultsTableContainer = document.getElementById(
+          "results-table-container"
+        );
+
+        const analyzeButton = document.getElementById("analyze-button");
+
+        // Clear previous data when switching options
+        resultsTableContainer.innerHTML = ""; // Clear results table container
+        fileInput.value = ""; // Clear file input value
+
+        if (option === "upload") {
+          fileInput.disabled = false;
+          startRecordingButton.disabled = true;
+          stopRecordingButton.disabled = true;
+          analyzeButton.disabled = false;
+        } else if (option === "record") {
+          fileInput.disabled = true;
+
+          startRecordingButton.disabled = false;
+          stopRecordingButton.disabled = true;
+          analyzeButton.disabled = true;
+        }
+      }
+
+      function startRecording() {
+        const constraints = { audio: true };
+
+        navigator.mediaDevices
+          .getUserMedia(constraints)
+          .then((stream) => {
+            recordAudio = RecordRTC(stream, {
+              type: "audio",
+              mimeType: "audio/webm",
+              sampleRate: 44100,
+              desiredSampRate: 16000,
+              recorderType: StereoAudioRecorder,
+              numberOfAudioChannels: 1,
+              timeSlice: 2000,
+
+              ondataavailable: function (blob) {
+                recordingChunks.push(blob);
+
+                detectSilenceAndSendChunk(stream);
+              },
+            });
+
+            recordAudio.startRecording();
+            // Control the start and stop recording buttons
+
+            startRecordingButton.disabled = true;
+            stopRecordingButton.disabled = false;
+          })
+          // Error callback
+          .catch((error) => {
+            console.error("Error accessing media devices.", error);
+          });
+      }
+
+      function detectSilenceAndSendChunk(stream) {
+        audioContext = new AudioContext();
+
+        audioContext.audioWorklet
+          .addModule("static/silence-detector.js")
+          .then(() => {
+            const sourceNode = audioContext.createMediaStreamSource(stream);
+            const silenceDetector = new AudioWorkletNode(
+              audioContext,
+              "silence-detector"
+            );
+
+            sourceNode.connect(silenceDetector);
+            silenceDetector.connect(audioContext.destination);
+
+            silenceDetector.port.onmessage = (event) => {
+              const newIsSilent = event.data.isSilent;
+
+              if (newIsSilent && currentChunk.length > 0) {
+                const chunkBlob = new Blob(currentChunk, { type: "audio/wav" });
+                console.log("Chunk Sent");
+                socket.emit("analyze_recorded_audio_chunk", {
+                  recordedChunk: chunkBlob,
+                });
+                currentChunk = [];
+              }
+
+              if (!newIsSilent) {
+                // currentChunk.push(...recordingChunks);
+                const newChunk = recordingChunks.shift();
+                if (newChunk !== undefined) {
+                  currentChunk.push(newChunk);
+                }
+              }
+            };
+          })
+          .catch((error) => {
+            console.error("Error loading audio worklet module:", error);
+          });
+      }
+
+      function stopRecording() {
+        recordAudio.stopRecording(() => {
+          socket.emit("save_full_recording", {
+            recordingData: recordAudio.getBlob(),
+          });
+        });
+        // audioContext.close();
+
+        startRecordingButton.disabled = false;
+        stopRecordingButton.disabled = true;
+      }
+
+      // Add event listeners
+      startRecordingButton.addEventListener("click", function () {
+        startRecording();
+      });
+
+      stopRecordingButton.addEventListener("click", function () {
+        stopRecording();
+      });
+    </script>
+  </body>
+</html>
