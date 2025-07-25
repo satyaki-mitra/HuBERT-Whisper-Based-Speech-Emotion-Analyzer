@@ -6,6 +6,11 @@ This app allows users to either **upload** or **record audio** in real time, and
 - **Detected Emotion**
 - **Transcribed Text**
 
+## 📸 Application Screenshot
+
+![Speech Emotion Recognition App](app_output_sample.png)
+*Clean, intuitive interface showing real-time emotion analysis with confidence scores and transcription results*
+
 ---
 
 ## 📦 Key Features
