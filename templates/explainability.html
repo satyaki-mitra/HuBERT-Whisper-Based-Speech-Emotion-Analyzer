@@ -780,14 +780,47 @@
                 y: features,
                 orientation: 'h',
                 marker: {
-                    color: shapValues.map(v => v > 0.25 ? '#51cf66' : '#667eea'),
-                    opacity: 0.8
-                }
+                    color: shapValues,
+                    colorscale: [
+                        [0, '#667eea'],      // Low importance - purple
+                        [0.5, '#94d82d'],    // Medium importance - lime
+                        [1, '#51cf66']       // High importance - green
+                    ],
+                    colorbar: {
+                        title: 'Importance',
+                        thickness: 15,
+                        len: 0.7
+                    },
+                    opacity: 0.9
+                },
+                text: shapValues.map(v => `${(v * 100).toFixed(1)}%`),
+                textposition: 'outside',
+                textfont: { size: 10 }
             }], {
-                margin: { t: 20, b: 40, l: 150, r: 20 },
-                xaxis: { title: 'SHAP Value (Impact on Prediction)' },
-                height: 400
+                margin: { t: 20, b: 40, l: 180, r: 60 },
+                xaxis: { 
+                    title: 'SHAP Value (Impact on Prediction)',
+                    range: [0, 0.5]
+                },
+                yaxis: {
+                    title: ''
+                },
+                height: 450
             }, { responsive: true });
+
+            // Add explanation text
+            const shapExplanation = document.createElement('div');
+            shapExplanation.style.cssText = 'margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 10px; color: #666; line-height: 1.6;';
+            shapExplanation.innerHTML = `
+                <p><strong>How to read this:</strong></p>
+                <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                    <li><strong>Green bars:</strong> Features with high importance (>25%) - primary drivers of emotion prediction</li>
+                    <li><strong>Purple bars:</strong> Features with lower importance - contribute but less significantly</li>
+                    <li><strong>Bar length:</strong> Indicates how much each feature influenced the model's decision</li>
+                </ul>
+                <p style="margin-top: 0.5rem;"><em>Note: These are aggregated SHAP values showing global feature importance for the detected emotion.</em></p>
+            `;
+            document.getElementById('shapChart').parentElement.appendChild(shapExplanation);
 
             // Feature list
             const featureList = document.getElementById('featureList');
