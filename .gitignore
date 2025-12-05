@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment Variables
+.env
+
+# Logs
+logs/
+*.log
+
+# Data Files (audio)
+uploaded_files/*
+recorded_files/*
+temp_files/*
+!uploaded_files/.gitkeep
+!recorded_files/.gitkeep
+!temp_files/.gitkeep
+
+# Model Files (too large)
+models/
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup Files
+*_OLD.py
+*.bak
+*.backup
+

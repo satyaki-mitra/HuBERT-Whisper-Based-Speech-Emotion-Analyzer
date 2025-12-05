@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmotiVoice - AI Speech Emotion & Transcription Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links a {
+            margin-left: 2rem;
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #333;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 70px;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 1rem 2rem;
+            z-index: 999;
+        }
+
+        .mobile-menu.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mobile-menu a {
+            display: block;
+            padding: 1rem 0;
+            color: #333;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .mobile-menu a:last-child {
+            border-bottom: none;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 150px 2rem 100px;
+            text-align: center;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 3rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease 0.4s both;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn i {
+            font-size: 1.2rem;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        /* Features Section */
+        .features {
+            background: white;
+            padding: 100px 2rem;
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 4rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2.5rem;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            padding: 2.5rem;
+            border-radius: 20px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: #667eea;
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Use Cases Section */
+        .use-cases {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 100px 2rem;
+            color: white;
+        }
+
+        .use-cases-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 4rem;
+        }
+
+        .use-case-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .use-case-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+
+        .use-case-card i {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .use-case-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            background: white;
+            padding: 100px 2rem;
+        }
+
+        .steps-container {
+            max-width: 1000px;
+            margin: 4rem auto 0;
+            display: grid;
+            gap: 3rem;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .step-number {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 2rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .step-content p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Try Now Section */
+        .try-now {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            padding: 80px 2rem;
+            text-align: center;
+            color: white;
+        }
+
+        .try-now h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .try-now p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .mode-cards {
+            max-width: 1200px;
+            margin: 3rem auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .mode-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+            text-decoration: none;
+            color: white;
+        }
+
+        .mode-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-10px);
+            border-color: white;
+        }
+
+        .mode-card i {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .mode-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .mode-card p {
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        footer {
+            background: #1a1a2e;
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        footer p {
+            opacity: 0.7;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
+            .step {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">EmotiVoice</div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#use-cases">Use Cases</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#try-now">Try Now</a>
+            </div>
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </nav>
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="#features">Features</a>
+            <a href="#use-cases">Use Cases</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#try-now">Try Now</a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>Understand Emotions in Speech<br>with AI-Powered Precision</h1>
+        <p>Advanced Speech Emotion Recognition and Transcription powered by HuBERT and Whisper AI. Analyze emotions, transcribe speech, and gain deeper insights from audio with explainable AI.</p>
+        <div class="cta-buttons">
+            <a href="/batch-analysis" class="btn btn-primary">
+                <i class="fas fa-file-audio"></i> Batch Analysis
+            </a>
+            <a href="/live-streaming" class="btn btn-primary">
+                <i class="fas fa-podcast"></i> Live Streaming
+            </a>
+            <a href="/explainability" class="btn btn-secondary">
+                <i class="fas fa-brain"></i> Explainability
+            </a>
+        </div>
+
+        <div style="margin-top: 2rem;">
+            <a href="#features" style="color: white; text-decoration: none; font-size: 1rem;">
+                Learn More <i class="fas fa-arrow-down"></i>
+            </a>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <div class="features-container">
+            <h2 class="section-title">Powerful Features</h2>
+            <p class="section-subtitle">Everything you need for comprehensive speech emotion analysis</p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                    <h3>6 Core Emotions</h3>
+                    <p>Detect Anger, Fear, Happiness, Neutral, Sadness, and Surprise with high accuracy using state-of-the-art HuBERT models.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-palette"></i></div>
+                    <h3>Granular Emotions</h3>
+                    <p>Go beyond basics with detailed emotional states including Frustration, Anxiety, Joy, Contentment, and 20+ more nuanced emotions.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-comments"></i></div>
+                    <h3>Multi-Language Transcription</h3>
+                    <p>Transcribe speech in 90+ languages with OpenAI's Whisper, supporting English, Spanish, French, Chinese, and many more.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                    <h3>Real-Time Streaming</h3>
+                    <p>Analyze emotions as you speak with live recording and instant feedback for real-time applications.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-file-upload"></i></div>
+                    <h3>Batch Processing</h3>
+                    <p>Upload audio files and get comprehensive analysis with automatic segmentation and detailed reports.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>Emotion Fusion</h3>
+                    <p>Detect complex emotional states like Elation, Bitterness, and Desperation through advanced emotion combination analysis.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-lightbulb"></i></div>
+                    <h3>Explainable AI</h3>
+                    <p>Understand predictions with attention visualizations, SHAP values, and LIME explanations for full transparency.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-download"></i></div>
+                    <h3>Export Options</h3>
+                    <p>Export results in JSON, CSV, or PDF formats with customizable reports and visualizations.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <h3>High Performance</h3>
+                    <p>Optimized for GPU/CPU with batch processing, achieving sub-second inference times on modern hardware.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="use-cases" class="use-cases">
+        <div class="features-container">
+            <h2 class="section-title" style="-webkit-text-fill-color: white;">Real-World Applications</h2>
+            <p class="section-subtitle" style="color: rgba(255,255,255,0.9);">See how EmotiVoice transforms industries</p>
+            
+            <div class="use-cases-grid">
+                <div class="use-case-card">
+                    <i class="fas fa-headset"></i>
+                    <h3>Customer Service</h3>
+                    <p>Monitor customer emotions in real-time to improve service quality and customer satisfaction rates.</p>
+                </div>
+                
+                <div class="use-case-card">
+                    <i class="fas fa-heart"></i>
+                    <h3>Mental Health</h3>
+                    <p>Support therapists with emotional tracking and analysis to better understand patient progress over time.</p>
+                </div>
+                
+                <div class="use-case-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>Education</h3>
+                    <p>Assess student engagement and emotional states during online learning to optimize teaching methods.</p>
+                </div>
+                
+                <div class="use-case-card">
+                    <i class="fas fa-microphone-alt"></i>
+                    <h3>Content Creation</h3>
+                    <p>Analyze podcast and video content to understand audience emotional responses and improve engagement.</p>
+                </div>
+                
+                <div class="use-case-card">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Market Research</h3>
+                    <p>Gauge genuine emotional reactions to products and services through voice feedback analysis.</p>
+                </div>
+                
+                <div class="use-case-card">
+                    <i class="fas fa-robot"></i>
+                    <h3>Voice Assistants</h3>
+                    <p>Build more empathetic AI assistants that respond appropriately to user emotional states.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="how-it-works">
+        <div class="features-container">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">Simple, fast, and accurate in just 3 steps</p>
+            
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Choose Your Mode</h3>
+                        <p>Select between batch analysis for uploaded files, live streaming for real-time recording, or explainability dashboard for deep insights.</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Upload or Record</h3>
+                        <p>Upload existing audio files (WAV, MP3, M4A, etc.) or record live audio directly through your browser.</p>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Get Insights</h3>
+                        <p>Receive detailed emotion breakdowns, confidence scores, transcriptions, language detection, and explainable AI visualizations instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="try-now" class="try-now">
+        <h2>Ready to Analyze?</h2>
+        <p>Choose your analysis mode and start understanding emotions in speech</p>
+        
+        <div class="mode-cards">
+            <a href="/batch-analysis" class="mode-card">
+                <i class="fas fa-file-audio"></i>
+                <h3>Batch Analysis</h3>
+                <p>Upload audio files for comprehensive analysis with automatic segmentation and detailed reports</p>
+            </a>
+            
+            <a href="/live-streaming" class="mode-card">
+                <i class="fas fa-podcast"></i>
+                <h3>Live Streaming</h3>
+                <p>Record and analyze emotions in real-time with instant feedback and continuous transcription</p>
+            </a>
+
+            <a href="/explainability" class="mode-card">
+                <i class="fas fa-brain"></i>
+                <h3>Explainability</h3>
+                <p>Understand AI predictions with attention visualizations, SHAP values, and feature importance analysis</p>
+            </a>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 EmotiVoice. Powered by HuBERT & Whisper AI.</p>
+        <p>Built with ❤️ for understanding human emotions</p>
+    </footer>
+    
+    <script>
+        // Mobile menu toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const mobileMenu = document.getElementById('mobileMenu');
+    
+        mobileMenuToggle.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+            const icon = mobileMenuToggle.querySelector('i');
+            icon.classList.toggle('fa-bars');
+            icon.classList.toggle('fa-times');
+        });
+    
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+                mobileMenuToggle.querySelector('i').classList.add('fa-bars');
+                mobileMenuToggle.querySelector('i').classList.remove('fa-times');
+            });
+        });
+    
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mobileMenu.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                mobileMenu.classList.remove('active');
+                mobileMenuToggle.querySelector('i').classList.add('fa-bars');
+                mobileMenuToggle.querySelector('i').classList.remove('fa-times');
+            }
+        });
+    </script>
+</body>
+</html>
