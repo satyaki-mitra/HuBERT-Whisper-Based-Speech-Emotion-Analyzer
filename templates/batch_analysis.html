@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Analysis - EmotiVoice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .back-button {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            transition: transform 0.3s;
+        }
+
+        .back-button:hover {
+            transform: translateX(-5px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 2rem;
+        }
+
+        .upload-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .upload-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 3rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .upload-area:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .upload-area i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .upload-area p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .file-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .emotion-mode {
+            margin-top: 2rem;
+        }
+
+        .emotion-mode h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .mode-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .mode-option input {
+            width: 18px;
+            height: 18px;
+        }
+
+        .mode-option label {
+            color: #666;
+            cursor: pointer;
+        }
+
+        .analyze-button {
+            width: 100%;
+            padding: 1rem;
+            margin-top: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .analyze-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .results-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+
+        .progress-container {
+            display: none;
+            margin-bottom: 2rem;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .chunk-result {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .chunk-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chunk-number {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+
+        .transcription {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .transcription h4 {
+            font-size: 0.9rem;
+            color: #999;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .transcription p {
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .language-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .emotions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .emotion-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .emotion-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .emotion-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .emotion-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .granular-emotions {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 10px;
+        }
+
+        .granular-emotions h4 {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            color: #333;
+        }
+
+        .granular-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .granular-tag {
+            background: #667eea;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-button"><i class="fas fa-arrow-left"></i> Back to Home</a>
+        
+        <div class="header">
+            <h1><i class="fas fa-file-audio"></i> Batch Analysis</h1>
+            <p>Upload audio files for comprehensive emotion and transcription analysis</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-panel">
+                <h2>Upload Audio</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p><strong>Click to upload</strong> or drag and drop</p>
+                    <p style="font-size: 0.85rem;">Supported: WAV, MP3, M4A, FLAC, OGG, WEBM</p>
+                    <input type="file" id="fileInput" class="file-input" accept="audio/*">
+                </div>
+
+                <div class="file-info" id="fileInfo">
+                    <h3>Selected File</h3>
+                    <p id="fileName"></p>
+                </div>
+
+                <div class="emotion-mode">
+                    <h3>Emotion Analysis Mode</h3>
+                    <div class="mode-options">
+                        <div class="mode-option">
+                            <input type="radio" id="modeBase" name="emotionMode" value="base">
+                            <label for="modeBase">Base Emotions (Faster)</label>
+                        </div>
+                        <div class="mode-option">
+                            <input type="radio" id="modeGranular" name="emotionMode" value="granular">
+                            <label for="modeGranular">Granular Emotions</label>
+                        </div>
+                        <div class="mode-option">
+                            <input type="radio" id="modeBoth" name="emotionMode" value="both" checked>
+                            <label for="modeBoth">Both (Comprehensive)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="analyze-button" id="analyzeButton" disabled>
+                    <i class="fas fa-play-circle"></i> Start Analysis
+                </button>
+            </div>
+
+            <div class="results-panel">
+                <h2>Analysis Results</h2>
+                
+                <div class="progress-container" id="progressContainer">
+                    <p class="progress-text" id="progressText">Preparing analysis...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <div id="resultsContent">
+                    <div class="empty-state">
+                        <i class="fas fa-chart-bar"></i>
+                        <p>Upload an audio file and start analysis to see results here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressText = document.getElementById('progressText');
+        const progressFill = document.getElementById('progressFill');
+        const resultsContent = document.getElementById('resultsContent');
+
+        let uploadedFilePath = null;
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+        
+        // Toast notification helper
+        function showToast(message, type = 'info') {
+            const colors = {
+                success: 'linear-gradient(135deg, #51cf66 0%, #37b24d 100%)',
+                error: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)',
+                info: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            };
+
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                stopOnFocus: true,
+                style: {
+                    background: colors[type] || colors.info
+                }
+            }).showToast();
+        }
+
+        // Handle file upload
+        async function handleFileUpload(file) {
+            // Validate file size (100MB max)
+            const maxSize = 100 * 1024 * 1024; // 100MB
+            if (file.size > maxSize) {
+                showToast(`File too large! Maximum size is 100MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`, 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/v1/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    uploadedFilePath = data.filepath;
+                    fileName.textContent = file.name;
+                    fileInfo.classList.add('show');
+                    analyzeButton.disabled = false;
+                } else {
+                    showToast('Upload failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Upload error: ' + error.message, 'error');
+            }
+        }
+
+        // Analyze button click
+        analyzeButton.addEventListener('click', () => {
+            if (!uploadedFilePath) return;
+
+            const emotionMode = document.querySelector('input[name="emotionMode"]:checked').value;
+            
+            // Clear previous results
+            resultsContent.innerHTML = '';
+            progressContainer.classList.add('show');
+            progressFill.style.width = '0%';
+            progressText.textContent = 'Starting analysis...';
+
+            // Emit analysis request
+            socket.emit('analyze_batch', {
+                filepath: uploadedFilePath,
+                emotion_mode: emotionMode
+            });
+        });
+
+        // Socket events
+        socket.on('status', (data) => {
+            progressText.textContent = data.message;
+            if (data.progress !== undefined) {
+                progressFill.style.width = data.progress + '%';
+            }
+        });
+
+        socket.on('chunk_result', (data) => {
+            displayChunkResult(data);
+            
+            // Save analysis ID for explainability
+            const analysisId = data.result.metadata?.analysis_id;
+            if (analysisId) {
+                sessionStorage.setItem('lastAnalysisId', analysisId);
+            }
+        });
+
+        socket.on('analysis_complete', () => {
+            progressContainer.classList.remove('show');
+            progressText.textContent = 'Analysis complete!';
+        });
+
+        socket.on('error', (data) => {
+            showToast('Error: ' + data.message, 'error');
+            progressContainer.classList.remove('show');
+        });
+        
+        // Display chunk result
+        function displayChunkResult(data) {
+            const result = data.result;
+            const chunkDiv = document.createElement('div');
+            chunkDiv.className = 'chunk-result';
+
+            let html = `
+                <div class="chunk-header">
+                    <span class="chunk-number">Segment ${data.chunk_index + 1} / ${data.total_chunks}</span>
+                    <span class="language-badge">${result.language}</span>
+                </div>
+            `;
+
+            // Transcription
+            html += `
+                <div class="transcription">
+                    <h4>Transcription</h4>
+                    <p>${result.transcription || 'No speech detected'}</p>
+                </div>
+            `;
+
+            // Base emotions
+            if (result.emotions.base) {
+                html += `<div class="emotions-grid">`;
+                result.emotions.base.forEach(emotion => {
+                    html += `
+                        <div class="emotion-card">
+                            <div class="emotion-label">${emotion.label}</div>
+                            <div class="emotion-score">${emotion.score}</div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            // Granular emotions
+            if (result.emotions.primary || result.emotions.secondary) {
+                html += `<div class="granular-emotions">`;
+                
+                if (result.emotions.primary) {
+                    html += `
+                        <h4>Primary Emotions (${result.emotions.primary.confidence})</h4>
+                        <div class="granular-tags">
+                            ${result.emotions.primary.emotions.map(e => `<span class="granular-tag">${e}</span>`).join('')}
+                        </div>
+                    `;
+                }
+
+                if (result.emotions.secondary) {
+                    html += `
+                        <h4>Secondary Emotions (${result.emotions.secondary.confidence})</h4>
+                        <div class="granular-tags">
+                            ${result.emotions.secondary.emotions.map(e => `<span class="granular-tag">${e}</span>`).join('')}
+                        </div>
+                    `;
+                }
+
+                html += `</div>`;
+            }
+
+            // Complex emotions
+            if (result.emotions.complex && result.emotions.complex.length > 0) {
+                html += `<div class="granular-emotions">`;
+                html += `<h4>Complex Emotions</h4>`;
+                result.emotions.complex.forEach(complex => {
+                    html += `
+                        <p style="margin-bottom: 0.5rem; color: #333;">
+                            <strong>${complex.name}</strong> 
+                            (${complex.components.join(' + ')}) - ${complex.confidence}
+                        </p>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            // Add "View Explanation" button
+            const analysisId = result.analysis_id;
+            if (analysisId) {
+                html += `
+                    <button 
+                        onclick="window.open('/explainability?id=${analysisId}', '_blank')"
+                        style="
+                            width: 100%;
+                            margin-top: 1rem;
+                            padding: 0.75rem;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 10px;
+                            font-size: 1rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        "
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(102, 126, 234, 0.3)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+                    >
+                        <i class="fas fa-brain"></i> View AI Explanation
+                    </button>
+                `;
+            }
+
+            chunkDiv.innerHTML = html;
+            resultsContent.appendChild(chunkDiv);
+        }
+    </script>
+</body>
+</html>
