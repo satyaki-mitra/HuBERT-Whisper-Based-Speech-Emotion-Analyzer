@@ -354,20 +354,9 @@ LOG_LEVEL=DEBUG  # DEBUG, INFO, WARNING, ERROR
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
----
-
 ## 📝 License
 
-MIT License © 2025
+MIT [License](LICENSE) © 2025 
 
 ---
 
@@ -380,12 +369,9 @@ MIT License © 2025
 
 ---
 
-## 📧 Contact & Support
+## Author
 
-For questions, issues, or feature requests:
-- Open an issue on GitHub
-- Email: [your-email@example.com]
-
+Satyaki Mitra | Data Scientist | AI Practitioner
 ---
 
 **Built with ❤️ for understanding human emotions through voice**
