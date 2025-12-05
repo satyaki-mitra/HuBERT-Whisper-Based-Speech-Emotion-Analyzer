@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Streaming - EmotiVoice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .back-button {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            transition: transform 0.3s;
+        }
+
+        .back-button:hover {
+            transform: translateX(-5px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 2rem;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            height: fit-content;
+        }
+
+        .control-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+
+        .recording-status {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .status-indicator {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            transition: all 0.3s;
+        }
+
+        .status-indicator.idle {
+            background: #e9ecef;
+            color: #999;
+        }
+
+        .status-indicator.recording {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .status-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .recording-duration {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-button {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(55, 178, 77, 0.3);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .control-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .clear-button {
+            width: 100%;
+            padding: 1rem;
+            background: #495057;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .clear-button:hover {
+            background: #343a40;
+        }
+
+        .results-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .results-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+            position: sticky;
+            top: 0;
+            background: white;
+            padding-bottom: 1rem;
+            z-index: 10;
+        }
+
+        .stream-result {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #667eea;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stream-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chunk-badge {
+            background: #667eea;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        .transcription-box {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .transcription-box h4 {
+            font-size: 0.85rem;
+            color: #999;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .transcription-text {
+            color: #333;
+            line-height: 1.6;
+            font-size: 1.05rem;
+        }
+
+        .emotions-compact {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .emotion-badge {
+            background: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .emotion-badge-label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .emotion-badge-score {
+            font-size: 0.9rem;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-button"><i class="fas fa-arrow-left"></i> Back to Home</a>
+        
+        <div class="header">
+            <h1><i class="fas fa-podcast"></i> Live Streaming Analysis</h1>
+            <p>Record and analyze emotions in real-time with instant feedback</p>
+        </div>
+
+        <div class="main-content">
+            <div class="control-panel">
+                <h2>Recording Controls</h2>
+                
+                <div class="recording-status">
+                    <div class="status-indicator idle" id="statusIndicator">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <div class="status-text" id="statusText">Ready to Record</div>
+                    <div class="recording-duration" id="duration">00:00</div>
+                </div>
+
+                <div class="control-buttons">
+                    <button class="control-button btn-start" id="startButton">
+                        <i class="fas fa-play"></i> Start
+                    </button>
+                    <button class="control-button btn-stop" id="stopButton" disabled>
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="chunksCount">0</div>
+                        <div class="stat-label">Chunks Analyzed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="wordsCount">0</div>
+                        <div class="stat-label">Words Transcribed</div>
+                    </div>
+                </div>
+
+                <button class="clear-button" id="clearButton">
+                    <i class="fas fa-trash"></i> Clear Results
+                </button>
+            </div>
+
+            <div class="results-panel">
+                <h2>Real-Time Results</h2>
+                
+                <div id="resultsContainer">
+                    <div class="empty-state">
+                        <i class="fas fa-waveform-lines"></i>
+                        <p>Start recording to see real-time emotion analysis and transcription</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // Toast notification helper
+        function showToast(message, type = 'info') {
+            const colors = {
+                success: 'linear-gradient(135deg, #51cf66 0%, #37b24d 100%)',
+                error: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)',
+                info: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            };
+
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                stopOnFocus: true,
+                style: {
+                    background: colors[type] || colors.info
+                }
+            }).showToast();
+        }
+
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const clearButton = document.getElementById('clearButton');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const durationDisplay = document.getElementById('duration');
+        const chunksCount = document.getElementById('chunksCount');
+        const wordsCount = document.getElementById('wordsCount');
+        const resultsContainer = document.getElementById('resultsContainer');
+
+        let mediaRecorder;
+        let recordingStartTime;
+        let durationInterval;
+        let chunkIndex = 0;
+        let totalWords = 0;
+        let fullRecordingChunks = [];
+
+        // Start recording
+        startButton.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                mediaRecorder = new RecordRTC(stream, {
+                    type: 'audio',
+                    mimeType: 'audio/webm',
+                    sampleRate: 44100,
+                    desiredSampRate: 16000,
+                    recorderType: StereoAudioRecorder,
+                    numberOfAudioChannels: 1,
+                    timeSlice: 3000, // Send chunk every 3 seconds
+                    ondataavailable: handleDataAvailable
+                });
+
+                mediaRecorder.startRecording();
+
+                // Update UI
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                statusIndicator.classList.remove('idle');
+                statusIndicator.classList.add('recording');
+                statusText.textContent = 'Recording...';
+
+                // Clear previous results
+                resultsContainer.innerHTML = '';
+                chunkIndex = 0;
+                totalWords = 0;
+                chunksCount.textContent = '0';
+                wordsCount.textContent = '0';
+
+                // Start duration timer
+                recordingStartTime = Date.now();
+                durationInterval = setInterval(updateDuration, 1000);
+
+            } catch (error) {
+                alert('Microphone access denied: ' + error.message);
+            }
+        });
+
+        // Stop recording
+        stopButton.addEventListener('click', () => {
+            if (mediaRecorder) {
+                mediaRecorder.stopRecording(() => {
+                    // Save full recording
+                    const blob = mediaRecorder.getBlob();
+                    socket.emit('save_recording', {
+                        recording_data: blob
+                    });
+
+                    // Stop all media tracks to release microphone
+                    if (mediaRecorder.stream) {
+                        mediaRecorder.stream.getTracks().forEach(track => {
+                            track.stop();
+                            console.log('Media track stopped:', track.kind);
+                        });
+                    }
+                });
+
+                // Update UI
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                statusIndicator.classList.remove('recording');
+                statusIndicator.classList.add('idle');
+                statusText.textContent = 'Recording Stopped';
+
+                // Stop duration timer
+                clearInterval(durationInterval);
+            }
+        });
+
+        // Clear results
+        clearButton.addEventListener('click', () => {
+            if (confirm('Clear all results?')) {
+                resultsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-waveform-lines"></i>
+                        <p>Start recording to see real-time emotion analysis and transcription</p>
+                    </div>
+                `;
+                chunkIndex = 0;
+                totalWords = 0;
+                chunksCount.textContent = '0';
+                wordsCount.textContent = '0';
+            }
+        });
+
+        // Handle audio chunk
+        function handleDataAvailable(blob) {
+            fullRecordingChunks.push(blob);
+            
+            // Send chunk for analysis
+            socket.emit('streaming_chunk', {
+                audio_data: blob,
+                chunk_index: chunkIndex
+            });
+        }
+
+        // Update duration display
+        function updateDuration() {
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            durationDisplay.textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // Socket events
+        socket.on('streaming_result', (data) => {
+            displayStreamResult(data);
+        });
+
+        socket.on('error', (data) => {
+            console.error('Error:', data.message);
+        });
+
+        socket.on('save_complete', (data) => {
+            console.log('Recording saved:', data.filepath);
+            
+            // Show download notification
+            showToast('Recording saved successfully! Click to download.', 'success');
+            
+            // Add download button to control panel
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'clear-button';
+            downloadBtn.style.marginTop = '1rem';
+            downloadBtn.style.background = 'linear-gradient(135deg, #51cf66 0%, #37b24d 100%)';
+            downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download Recording';
+            downloadBtn.onclick = () => {
+                window.open(data.filepath, '_blank');
+            };
+            
+            // Insert after clear button
+            const controlPanel = document.querySelector('.control-panel');
+            controlPanel.appendChild(downloadBtn);
+        });
+
+        // Display streaming result
+        function displayStreamResult(data) {
+            // Remove empty state if present
+            if (resultsContainer.querySelector('.empty-state')) {
+                resultsContainer.innerHTML = '';
+            }
+
+            const result = data.result;
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'stream-result';
+
+            const timestamp = new Date().toLocaleTimeString();
+
+            let html = `
+                <div class="stream-header">
+                    <span class="chunk-badge">Chunk ${data.chunk_index + 1}</span>
+                    <span class="timestamp">${timestamp}</span>
+                </div>
+            `;
+
+            // Transcription
+            if (result.transcription) {
+                const words = result.transcription.split(' ').length;
+                totalWords += words;
+                wordsCount.textContent = totalWords;
+
+                html += `
+                    <div class="transcription-box">
+                        <h4>Transcription</h4>
+                        <div class="transcription-text">${result.transcription}</div>
+                    </div>
+                `;
+            }
+
+            // Emotions
+            if (result.emotions && result.emotions.base) {
+                html += `<div class="emotions-compact">`;
+                
+                // Show top 3 emotions
+                const topEmotions = result.emotions.base.slice(0, 3);
+                topEmotions.forEach(emotion => {
+                    html += `
+                        <div class="emotion-badge">
+                            <span class="emotion-badge-label">${emotion.label}</span>
+                            <span class="emotion-badge-score">${emotion.score}</span>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            }
+
+            // Add "View Explanation" button
+            const analysisId = result.analysis_id;
+            if (analysisId) {
+                html += `
+                    <button 
+                        onclick="window.open('/explainability?id=${analysisId}', '_blank')"
+                        style="
+                            width: 100%;
+                            margin-top: 1rem;
+                            padding: 0.5rem 1rem;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-size: 0.9rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        "
+                        onmouseover="this.style.opacity='0.9'"
+                        onmouseout="this.style.opacity='1'"
+                    >
+                        <i class="fas fa-lightbulb"></i> View Explanation
+                    </button>
+                `;
+            }
+
+            resultDiv.innerHTML = html;
+            resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
+
+            // Update chunks count
+            chunkIndex++;
+            chunksCount.textContent = chunkIndex;
+        }
+    </script>
+</body>
+</html>
