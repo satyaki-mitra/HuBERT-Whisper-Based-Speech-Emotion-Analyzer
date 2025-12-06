@@ -428,15 +428,6 @@ graph TB
 ### 4.2. Whisper Architecture
 
 ```mermaid
-Unable to render rich display
-
-Parse error on line 12:
-... StartToken[<|startoftranscript|>
------------------------^
-Expecting 'SQE', 'TAGEND', 'UNICODE_TEXT', 'TEXT', 'TAGSTART', got 'PIPE'
-
-For more information, see https://docs.github.com/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams#creating-mermaid-diagrams
-
 graph LR
     subgraph "Encoder"
         Audio[Audio Input<br/>16kHz] --> MelSpec[Mel Spectrogram<br/>80 bins]
@@ -448,7 +439,7 @@ graph LR
     
     subgraph "Decoder"
         EncBlocks --> Context[Encoder Output]
-        StartToken[<|startoftranscript|>] --> DecEmbed[Token Embedding]
+        StartToken[Start Token<br/>&lt;|startoftranscript|&gt;] --> DecEmbed[Token Embedding]
         DecEmbed --> DecBlocks[32 Transformer Blocks<br/>Cross-Attention to Encoder]
         Context --> DecBlocks
         DecBlocks --> LM[Language Model Head]
