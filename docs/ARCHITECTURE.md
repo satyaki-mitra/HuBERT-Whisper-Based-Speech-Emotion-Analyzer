@@ -383,7 +383,7 @@ graph TB
     subgraph "Input Processing"
         Audio[Raw Audio Waveform<br/>16kHz, Mono]
         Audio --> FeatureExtractor[Wav2Vec2 Feature Extractor<br/>Frame: 25ms, Stride: 20ms]
-        FeatureExtractor --> Features[Feature Sequence<br/>Shape: [1, T, 768]]
+        FeatureExtractor --> Features["Feature Sequence<br/>Shape: [1, T, 768]"]
     end
     
     subgraph "HuBERT Encoder"
@@ -428,37 +428,26 @@ graph TB
 ### 4.2. Whisper Architecture
 
 ```mermaid
-graph TB
-    subgraph "Input Processing"
-        Audio[Raw Audio Waveform<br/>16kHz, Mono]
-        Audio --> FeatureExtractor[Wav2Vec2 Feature Extractor<br/>Frame: 25ms, Stride: 20ms]
-        FeatureExtractor --> Features["Feature Sequence<br/>Shape: [1, T, 768]"]
+graph LR
+    subgraph "Encoder"
+        Audio[Audio Input<br/>16kHz] --> MelSpec[Mel Spectrogram<br/>80 bins]
+        MelSpec --> Conv1[Conv1D: 1→384]
+        Conv1 --> Conv2[Conv2D: 384→768]
+        Conv2 --> PE[Positional Encoding]
+        PE --> EncBlocks[32 Transformer Blocks<br/>Hidden: 1280<br/>Heads: 20]
     end
     
-    subgraph "HuBERT Encoder"
-        Features --> CNN[7-layer CNN<br/>Kernel: 10,3,3,3,3,2,2<br/>Stride: 5,2,2,2,2,2,2]
-        CNN --> Transformer[12-layer Transformer<br/>Hidden: 768<br/>Heads: 12<br/>FFN: 3072]
-        
-        Transformer --> Layer1[Layer 1<br/>Self-Attention + FFN]
-        Layer1 --> Layer2[Layer 2]
-        Layer2 --> Layer3[...]
-        Layer3 --> Layer12[Layer 12]
+    subgraph "Decoder"
+        EncBlocks --> Context[Encoder Output]
+        StartToken["START_TOKEN"] --> DecEmbed[Token Embedding]
+        DecEmbed --> DecBlocks[32 Transformer Blocks<br/>Cross-Attention to Encoder]
+        Context --> DecBlocks
+        DecBlocks --> LM[Language Model Head]
+        LM --> Tokens[Output Tokens]
     end
     
-    subgraph "Classification Head"
-        Layer12 --> Pooling[Pooling Strategy<br/>Mean/Max/Sum]
-        Pooling --> Dropout[Dropout: 0.1]
-        Dropout --> Dense[Dense Layer: 768→768]
-        Dense --> Tanh[Tanh Activation]
-        Tanh --> Dropout2[Dropout: 0.1]
-        Dropout2 --> Output[Output Layer: 768→6]
-        Output --> Softmax[Softmax]
-        Softmax --> Emotions[6 Emotion Probabilities]
-    end
-    
-    style CNN fill:#667eea,color:#fff
-    style Transformer fill:#764ba2,color:#fff
-    style Pooling fill:#51cf66,color:#fff
+    style EncBlocks fill:#667eea,color:#fff
+    style DecBlocks fill:#764ba2,color:#fff
 ```
 
 #### **Model Specifications**:
