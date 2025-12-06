@@ -167,13 +167,9 @@ graph TB
 | Component | Purpose | Technology |
 |-----------|---------|------------|
 | Flask App | HTTP server | Flask 2.x |
-|-----------|---------|------------|
 | SocketIO | WebSocket server | Flask-SocketIO |
-|-----------|---------|------------|
 | Celery | Task queue | Celery + Redis |
-|-----------|---------|------------|
 | Pydantic | Data validation | Pydantic v2 |
-|-----------|---------|------------|
 
 ### 2.3. Service Layer
 
@@ -421,21 +417,13 @@ graph TB
 | Parameter | Value |
 |-----------|-------| 
 | Architecture | HuBERT-Base |
-|-----------|-------|
 | Parameters | ~95M |
-|-----------|-------|
 | Hidden Size | 768 | 
-|-----------|-------|
 | Layers | 12 | 
-|-----------|-------|
 | Attention Heads| 12 |
-|-----------|-------|
 | FFN Dimension| 3072 | 
-|-----------|-------|
 | Pooling Mode | Mean (configurable)| 
-|-----------|-------|
 | Output Classes | 6 emotions |
-|-----------|-------|
 
 ### 4.2. Whisper Architecture
 
@@ -467,32 +455,31 @@ graph LR
 | Parameter | Whisper Large-v3 |
 |-----------|------------------|
 | Parameters | 1550M | 
-|-----------|------------------|
 | Encoder Layers | 32 | 
-|-----------|------------------|
 | Decoder Layers | 32 |
-|-----------|------------------|
 | Hidden Size | 1280 | 
-|-----------|------------------|
 | Attention Heads | 20 |
-|-----------|------------------|
 | Languages | 99+ | 
-|-----------|------------------|
 | Vocabulary | 51,865 tokens |
-|-----------|------------------|
 
 ---
 
 ## 5. Mathematical Foundations
-Mathematical Foundations
-1. Emotion Detection
-Softmax Classification
+
+### 5.1. Emotion Detection
+
+**Softmax Classification**
+
 For a given audio feature vector x, the probability of emotion class i is:
+
+```math
 P(y=i∣x)=ezi∑j=1CezjP(y = i | \mathbf{x}) = \frac{e^{z_i}}{\sum_{j=1}^{C} e^{z_j}}P(y=i∣x)=∑j=1C​ezj​ezi​​
+```
+
 Where:
 
-zi=wiTh+biz_i = \mathbf{w}_i^T \mathbf{h} + b_i
-zi​=wiT​h+bi​ (logit for class *i*)
+- zi=wiTh+biz_i = \mathbf{w}_i^T \mathbf{h} + b_i
+- zi​=wiT​h+bi​ (logit for class *i*)
 
 h\mathbf{h}
 h = pooled hidden representation from HuBERT
@@ -504,15 +491,22 @@ wi,bi\mathbf{w}_i, b_i
 wi​,bi​ = learned weights and bias
 
 
-Pooling Strategies
-**Mean Pooling:**
+**Pooling Strategies**
+**1. Mean Pooling:**
 
+```math
 hmean=1T∑t=1Tht\mathbf{h}_{mean} = \frac{1}{T} \sum_{t=1}^{T} \mathbf{h}_thmean​=T1​t=1∑T​ht​
-**Max Pooling:**
+```
 
+**2. Max Pooling:**
+
+```math
 hmax=max⁡t=1Tht\mathbf{h}_{max} = \max_{t=1}^{T} \mathbf{h}_thmax​=t=1maxT​ht​
-**Sum Pooling:**
+```
 
+**3. Sum Pooling:**
+
+```math
 hsum=∑t=1Tht\mathbf{h}_{sum} = \sum_{t=1}^{T} \mathbf{h}_thsum​=t=1∑T​ht​
 Where:
 
@@ -521,14 +515,22 @@ T = sequence length
 
 ht\mathbf{h}_t
 ht​ = hidden state at time step *t*
+```
 
 
+### 5.2. Granular Emotion Mapping
 
-2. Granular Emotion Mapping
-Given base emotion probabilities Pbase={p1,...,p6}P_{base} = \{p_1, ..., p_6\}
-Pbase​={p1​,...,p6​}:
+Given base emotion probabilities:
 
-Primary Granular Emotions:
+```math
+Pbase={p1,...,p6}P_{base} = \{p_1, ..., p_6\}
+
+- Pbase​={p1​,...,p6​}:
+```
+
+- **Primary Granular Emotions**:
+
+```math
 Eprimary={Mapping[edominant].primaryif pdominant≥θprimary∅otherwiseE_{primary} = \begin{cases}
 \text{Mapping}[e_{dominant}].\text{primary} & \text{if } p_{dominant} \geq \theta_{primary} \\
 \emptyset & \text{otherwise}
@@ -544,11 +546,14 @@ edominant=arg⁡max⁡ipie_{dominant} = \arg\max_i p_i
 edominant​=argmaxi​pi​
 θprimary\theta_{primary}
 θprimary​ = threshold (default: 0.3-0.4)
+```
 
 
+### 5.3. Complex Emotion Detection
 
-3. Complex Emotion Detection
 For emotion fusion, given top-2 emotions (e1,e2)(e_1, e_2)
+
+```math
 (e1​,e2​) with probabilities (p1,p2)(p_1, p_2)
 (p1​,p2​):
 
@@ -564,9 +569,11 @@ Example mappings:
 (Happiness, Surprise) → Elation
 (Sadness, Anger) → Bitterness
 (Fear, Sadness) → Desperation
+```
 
+### 5.4. SHAP Feature Attribution
 
-4. SHAP Feature Attribution
+```math
 For feature *j*, the SHAP value ϕj\phi_j
 ϕj​ represents its contribution to prediction:
 
@@ -587,8 +594,11 @@ wemotion,j​ = emotion-specific feature weight
 
 Normalization:
 ϕjnorm=ϕj∑k=1nϕk\phi_j^{norm} = \frac{\phi_j}{\sum_{k=1}^{n} \phi_k}ϕjnorm​=∑k=1n​ϕk​ϕj​​
+```
 
-5. LIME Local Explanations
+### 5.5. LIME Local Explanations
+
+```math
 Audio is segmented into N segments. For segment i:
 Contribution Score:
 ci=α⋅Energyi+β⋅PitchVari−γc_i = \alpha \cdot \text{Energy}_i + \beta \cdot \text{PitchVar}_i - \gammaci​=α⋅Energyi​+β⋅PitchVari​−γ
@@ -610,8 +620,11 @@ ci​∈[−1,1] (clipped)
 Positive/Negative Contributors:
 Positive={i:ci>0.2}\text{Positive} = \{i : c_i > 0.2\}Positive={i:ci​>0.2}
 Negative={i:ci<−0.2}\text{Negative} = \{i : c_i < -0.2\}Negative={i:ci​<−0.2}
+```
 
-6. Attention Mechanism
+### 5.6. Attention Mechanism
+
+```math
 Multi-Head Self-Attention:
 Attention(Q,K,V)=softmax(QKTdk)V\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)VAttention(Q,K,V)=softmax(dk​​QKT​)V
 Multi-Head Output:
@@ -629,9 +642,11 @@ dk​=64 (key dimension)
 
 dmodel=768d_{model} = 768
 dmodel​=768
+```
 
+### 5.7. Audio Feature Extraction
 
-7. Audio Feature Extraction
+```math
 Mel-Frequency Cepstral Coefficients (MFCCs)
 MFCCk=∑m=1Mlog⁡(Sm)cos⁡[k(m−0.5)πM]\text{MFCC}_k = \sum_{m=1}^{M} \log(S_m) \cos\left[k(m - 0.5)\frac{\pi}{M}\right]MFCCk​=m=1∑M​log(Sm​)cos[k(m−0.5)Mπ​]
 Where:
@@ -666,7 +681,7 @@ A = peak amplitude
 
 ΔA\Delta A
 ΔA = amplitude differences
-
+```
 ---
 
 ## 6. Component Specifications
