@@ -43,10 +43,12 @@ class AudioAnalyzer:
             analysis_id          = str(uuid.uuid4())
 
             # Transcribe
-            transcription_result = self.transcriber.transcribe(audio_path)
+            transcription_result = self.transcriber.transcribe(audio_path = audio_path)
             
             # Predict emotions
-            emotion_result       = self.emotion_predictor.predict(audio_path, emotion_mode)
+            emotion_result       = self.emotion_predictor.predict(audio_path = audio_path, 
+                                                                  mode       = emotion_mode,
+                                                                 )
             
             processing_time      = time.time() - start_time
             
@@ -80,7 +82,9 @@ class AudioAnalyzer:
             transcription_result = self.transcriber.transcribe_streaming(audio_path)
             
             # Base emotions only (faster)
-            emotion_result      = self.emotion_predictor.predict(audio_path, mode='base')
+            emotion_result      = self.emotion_predictor.predict(audio_path = audio_path, 
+                                                                 mode       = 'base',
+                                                                )
             
             processing_time     = time.time() - start_time
             
@@ -111,7 +115,7 @@ class AudioAnalyzer:
                      'emotions'      : {},
                     }
         
-        emotions  = analysis_result['emotions']
+        emotions = analysis_result['emotions']
         
         # Format base emotions
         if ('base' in emotions):
@@ -119,32 +123,77 @@ class AudioAnalyzer:
                                                    key     = lambda x: x[1],
                                                    reverse = True,
                                                   )
-            formatted['emotions']['base'] = [{'label'      : emotion,
-                                              'score'      : score,
-                                              'percentage' : f"{score * 100:.2f}%",
-                                             }
-                                             for emotion, score in sorted_emotions
-                                            ]
+            
+            formatted['emotions']['base'] = list()
+
+            for emotion, score in sorted_emotions:
+                # Handle both float and string percentages
+                if (isinstance(score, (int, float))):
+                    # score is already a percentage
+                    percentage = f"{score:.2f}%"  
+
+                elif isinstance(score, str):
+                    # Remove existing % if present and format
+                    clean_score = score.replace('%', '').strip()
+                    
+                    try:
+                        percentage = f"{float(clean_score):.2f}%"
+                    
+                    except ValueError:
+                        percentage = f"{score}%"
+                
+                else:
+                    percentage = f"{score}%"
+                
+                formatted['emotions']['base'].append({'label'      : emotion,
+                                                      'score'      : score, 
+                                                      'percentage' : percentage,
+                                                    })
         
-        # Format granular emotions
+        # Format granular emotions 
         if (('primary' in emotions) and emotions['primary']):
+            confidence = emotions['primary']['confidence']
+            
+            if (isinstance(confidence, (int, float))):
+                confidence_str = f"{confidence:.2f}%"
+
+            else:
+                confidence_str = confidence if '%' in str(confidence) else f"{confidence}%"
+            
             formatted['emotions']['primary'] = {'emotions'   : emotions['primary']['emotions'],
-                                                'confidence' : f"{emotions['primary']['confidence'] * 100:.2f}%",
+                                                'confidence' : confidence_str,
                                                }
         
         if (('secondary' in emotions) and emotions['secondary']):
+            confidence = emotions['secondary']['confidence']
+            
+            if (isinstance(confidence, (int, float))):
+                confidence_str = f"{confidence:.2f}%"
+
+            else:
+                confidence_str = confidence if '%' in str(confidence) else f"{confidence}%"
+            
             formatted['emotions']['secondary'] = {'emotions'   : emotions['secondary']['emotions'],
-                                                  'confidence' : f"{emotions['secondary']['confidence'] * 100:.2f}%",
+                                                  'confidence' : confidence_str,
                                                  }
         
         # Format complex emotions
         if (('complex' in emotions) and emotions['complex']):
-            formatted['emotions']['complex'] = [{'name'       : item['name'],
-                                                 'components' : item['components'],
-                                                 'confidence' : f"{item['confidence'] * 100:.2f}%",
-                                                }
-                                                for item in emotions['complex']
-                                               ]
+            formatted['emotions']['complex'] = []
+
+            for item in emotions['complex']:
+                confidence = item['confidence']
+
+                if (isinstance(confidence, (int, float))):
+                    confidence_str = f"{confidence:.2f}%"
+                
+                else:
+                    confidence_str = confidence if '%' in str(confidence) else f"{confidence}%"
+                
+                formatted['emotions']['complex'].append({'name'       : item['name'],
+                                                         'components' : item['components'],
+                                                         'confidence' : confidence_str,
+                                                       })
         
         # Add metadata
         if ('metadata' in analysis_result):

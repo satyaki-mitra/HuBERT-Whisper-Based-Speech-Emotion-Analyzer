@@ -11,6 +11,7 @@ from config.settings import EXPORTS_DIR
 from reportlab.platypus import Paragraph
 from reportlab.lib.pagesizes import letter
 from utils.logging_util import setup_logger
+from reportlab.platypus import Image as RLImage
 from reportlab.platypus import SimpleDocTemplate
 from reportlab.lib.styles import getSampleStyleSheet
 
@@ -32,13 +33,8 @@ class ExportService:
     def export(self, analysis_id: str, format: str, result_data: Dict[str, Any] = None, include_visualizations: bool = False) -> Path:
         """
         Export analysis results with optional visualizations
-    
-        Arguments:
-        ----------
-            include_visualizations { bool } : If True, bundle visualization images with export
         """
         if include_visualizations:
-            # Get visualization paths
             viz_dir   = EXPORTS_DIR / 'visualizations'
             viz_files = list(viz_dir.glob(f"{analysis_id}_*.png"))
             
@@ -53,22 +49,54 @@ class ExportService:
                 logger.info(f"Created visualization bundle: {zip_path}")
                 
                 return zip_path
+            
+            elif (viz_files and (format == 'pdf')):
+                # Create PDF with embedded images
+                pdf_path = EXPORTS_DIR / f"{analysis_id}_report.pdf"
+                doc      = SimpleDocTemplate(str(pdf_path), 
+                                             pagesize = letter,
+                                            )
+
+                story    = list()
+                styles   = getSampleStyleSheet()
+                
+                # Title
+                story.append(Paragraph("EmotiVoice Explainability Report", styles['Title']))
+                story.append(Spacer(1, 20))
+
+                story.append(Paragraph(f"Analysis ID: {analysis_id}", styles['Normal']))
+                story.append(Spacer(1, 30))
+                
+                # Add each visualization
+                for viz_file in sorted(viz_files):
+                    viz_name = viz_file.stem.replace(f"{analysis_id}_", "").replace("_", " ").title()
+                    
+                    story.append(Paragraph(viz_name, styles['Heading2']))
+                    story.append(Spacer(1, 10))
+                    
+                    # Add image (resize to fit page)
+                    img = RLImage(str(viz_file), 
+                                  width  = 500, 
+                                  height = 300,
+                                 )
+
+                    story.append(img)
+                    story.append(Spacer(1, 30))
+                
+                doc.build(story)
+                logger.info(f"Created PDF report: {pdf_path}")
+                
+                return pdf_path
 
         if (format == 'json'):
-            return self.export_json(analysis_id = analysis_id, 
-                                    result_data = result_data,
-                                   )
-
+            return self.export_json(analysis_id, result_data)
+       
         elif (format == 'csv'):
-            return self.export_csv(analysis_id = analysis_id, 
-                                   result_data = result_data,
-                                  )
-
+            return self.export_csv(analysis_id, result_data)
+        
         elif (format == 'pdf'):
-            return self.export_pdf(analysis_id = analysis_id, 
-                                   result_data = result_data,
-                                  )
-
+            return self.export_pdf(analysis_id, result_data)
+        
         else:
             raise ValueError(f"Unsupported format: {format}")
 
