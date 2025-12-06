@@ -213,26 +213,34 @@ def analyze_audio():
 @api_bp.route('/explain/<analysis_id>', methods = ['GET'])
 def get_explainability(analysis_id: str):
     """
-    Get explainability results
+    Get explainability results with REAL data
     """
     try:
         explainability_service = ExplainabilityService()
-        result                 = explainability_service.get_explanation(analysis_id)
+        result                 = explainability_service.get_explanation(analysis_id = analysis_id)
         
-        if (not result or (not result.get('available'))):
-
+        if not result or not result.get('available'):
             return jsonify({'error'       : 'Explainability data not found',
-                            'analysis_id' : analysis_id,
+                            'analysis_id' : analysis_id
                           }), 404
+        
+        # Add image URLs for frontend
+        viz_dir        = EXPORTS_DIR / 'visualizations'
+        visualizations = dict()
+        
+        for viz_file in viz_dir.glob(f"{analysis_id}_*.png"):
+            viz_type                 = viz_file.stem.replace(f"{analysis_id}_", "")
+            visualizations[viz_type] = f"/api/v1/download/{viz_file.name}"
+        
+        result['visualization_urls'] = visualizations
         
         return jsonify(result), 200
         
     except Exception as e:
         logger.error(f"Explainability request failed: {repr(e)}")
         error_response = handle_generic_error(e)
-
+        
         return jsonify(error_response.dict()), 500
-
 
 
 # EXPORT RESULTS

@@ -213,78 +213,118 @@ class EmotionPredictor:
             with torch.no_grad():
                 logits = self.model(**inputs).logits
             
-            # Get probabilities
-            scores   = F.softmax(logits, dim=1).detach().cpu().numpy()[0]
+            # Get probabilities (raw)
+            scores_raw  = F.softmax(logits, dim = 1).detach().cpu().numpy()[0]
             
-            # Create emotion dictionary
-            emotions = {BASE_EMOTIONS[i]: float(scores[i]) for i in range(len(scores))}
+            # Convert to percentages and round
+            percentages = list()
+            total       = 0
             
-            return emotions
+            for score in scores_raw:
+                percentage = round(float(score) * 100, 4)
+
+                percentages.append(percentage)
+                total     += percentage
+            
+            # Adjust for rounding errors to ensure sum = 100%
+            if (abs(total - 100.00) > 0.01):
+                max_idx              = np.argmax(scores_raw)
+                adjustment           = 100.00 - total
+                percentages[max_idx] = round(percentages[max_idx] + adjustment, 2)
+            
+            # Create dictionaries : For internal calculations (0-1) &  for frontend display (0-100%)
+            raw_emotions     = {BASE_EMOTIONS[i]: float(scores_raw[i]) for i in range(len(scores_raw))}
+            rounded_emotions = {BASE_EMOTIONS[i]: percentages[i] for i in range(len(percentages))}
+            
+            return {'raw'     : raw_emotions,      
+                    'display' : rounded_emotions,
+                   }
             
         except Exception as e:
             logger.error(f"Emotion prediction error: {repr(e)}")
             raise
     
 
-    def predict_granular_emotions(self, base_emotions: Dict[str, float]) -> Dict:
+    def predict_granular_emotions(self, base_emotions: Dict[str, dict]) -> Dict:
         """
-        Map base emotions to granular emotions
+        Map base emotions to granular emotions : Uses raw scores for calculations, returns display values
         """
-        result         = {'base'      : base_emotions,
-                          'primary'   : None,
-                          'secondary' : None,
-                          'complex'   : [],
-                         }
+        # Extract raw emotions for calculations
+        base_emotions_raw      = base_emotions['raw']
+        base_emotions_display  = base_emotions['display']
+
+        result                 = {'base'      : base_emotions_display,
+                                  'primary'   : None,
+                                  'secondary' : None,
+                                  'complex'   : [],
+                                 }
         
-        # Find dominant emotion
-        dominant_name  = max(base_emotions.items(), key = lambda x: x[1])[0]
-        dominant_score = base_emotions[dominant_name]
+        dominant_name          = max(base_emotions_raw.items(), key = lambda x: x[1])[0]
+        dominant_score_raw     = base_emotions_raw[dominant_name]
         
-        # Map to granular
+        # Display percentage
+        dominant_score_display = base_emotions_display[dominant_name]
+        
+        # Map to granular using RAW scores
         if dominant_name in GRANULAR_EMOTION_MAP:
             mapping   = GRANULAR_EMOTION_MAP[dominant_name]
             threshold = mapping['threshold']
             
-            if (dominant_score >= threshold):
+            # Use raw score for threshold comparison
+            if (dominant_score_raw >= threshold):
                 result['primary'] = {'emotions'   : mapping['primary'],
-                                     'confidence' : dominant_score
+                                     'confidence' : dominant_score_display,  
                                     }
                 
-                if (0.3 <= dominant_score < 0.7):
+                # For secondary, still use raw score
+                if (0.3 <= dominant_score_raw < 0.7):
                     result['secondary'] = {'emotions'   : mapping['secondary'],
-                                           'confidence' : dominant_score * 0.7,
+                                           'confidence' : round(dominant_score_display * 0.7, 2),
                                           }
         
-        # Detect complex emotions
-        sorted_emotions = sorted(base_emotions.items(), key = lambda x: x[1], reverse = True)
+        # Detect complex emotions using RAW scores
+        sorted_emotions_raw = sorted(base_emotions_raw.items(), 
+                                     key     = lambda x: x[1], 
+                                     reverse = True,
+                                    )
 
-        if (len(sorted_emotions) >= 2):
-            top_two = tuple(sorted([sorted_emotions[0][0], sorted_emotions[1][0]]))
+        if (len(sorted_emotions_raw) >= 2):
+            top_two = tuple(sorted([sorted_emotions_raw[0][0], sorted_emotions_raw[1][0],]))
             
             for emotion_pair, complex_name in COMPLEX_EMOTIONS.items():
                 if (set(top_two) == set(emotion_pair)):
-                    avg_score = (sorted_emotions[0][1] + sorted_emotions[1][1]) / 2
+                    # Get display values for confidence
+                    score1_display    = base_emotions_display[top_two[0]]
+                    score2_display    = base_emotions_display[top_two[1]]
+                    avg_score_display = (score1_display + score2_display) / 2
                     
-                    if (avg_score > 0.3):
+                    # Use raw scores for threshold
+                    score1_raw        = base_emotions_raw[top_two[0]]
+                    score2_raw        = base_emotions_raw[top_two[1]]
+                    avg_score_raw     = (score1_raw + score2_raw) / 2
+                    
+                    if (avg_score_raw > 0.3):
                         result['complex'].append({'name'       : complex_name,
                                                   'components' : list(top_two),
-                                                  'confidence' : avg_score,
+                                                  'confidence' : round(avg_score_display, 2),
                                                 })
         
         return result
-    
+
 
     def predict(self, audio_path: str, mode: str = 'both') -> Dict:
         """
         Predict emotions based on mode
         """
-        base_emotions = self.predict_base_emotions(audio_path)
+        base_emotions_result = self.predict_base_emotions(audio_path = audio_path)
         
         if (mode == 'base'):
-            return {'base': base_emotions}
-
+            return {'base' : base_emotions_result['display']}
+        
         elif (mode in ['granular', 'both']):
-            return self.predict_granular_emotions(base_emotions)
+            granular_result = self.predict_granular_emotions(base_emotions = base_emotions_result)
+            
+            return granular_result
         
         else:
             raise ValueError(f"Invalid mode: {mode}")

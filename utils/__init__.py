@@ -10,6 +10,7 @@ from .error_handlers import ModelInferenceError
 from .audio_utils import create_unique_filename
 from .error_handlers import EmotiVoiceException
 from .error_handlers import AudioProcessingError
+from .audio_utils import convert_to_wav_streaming
 
 
 __all__ = ['setup_logger',
@@ -23,4 +24,5 @@ __all__ = ['setup_logger',
            'load_audio_as_tensor',
            'split_audio_on_silence',
            'create_unique_filename',
+           'convert_to_wav_streaming',
           ]

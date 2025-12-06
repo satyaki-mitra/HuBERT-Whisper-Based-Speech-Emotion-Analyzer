@@ -26,6 +26,8 @@ from utils.audio_utils import create_unique_filename
 from services.explainer import ExplainabilityService
 from utils.error_handlers import handle_generic_error
 from services.audio_analyzer import get_audio_analyzer
+from utils.audio_utils import convert_to_wav_streaming
+from services.emotion_predictor import get_emotion_predictor
 
 
 # SETUP LOGGING
@@ -176,12 +178,47 @@ def handle_batch_analysis(data):
                 try:
                     explainability = ExplainabilityService()
                     
-                    # Generate emotion distribution chart
                     if (('emotions' in result) and ('base' in result['emotions'])):
+                        # Extract emotion prediction dictionary
+                        emotion_dict = result['emotions']['base']
+                        
+                        # Generate emotion distribution
                         explainability.generate_emotion_distribution(analysis_id    = analysis_id,
-                                                                     emotion_scores = result['emotions']['base'],
+                                                                     emotion_scores = emotion_dict,
                                                                     )
+                        
+                        # Compute and visualize SHAP values
+                        shap_data    = explainability.compute_shap_values(audio_path     = chunk_path,
+                                                                          emotion_scores = emotion_dict,
+                                                                         )
 
+                        explainability.generate_shap_visualization(analysis_id = analysis_id, 
+                                                                   shap_data   = shap_data,
+                                                                  )
+                        
+                        # Compute and visualize LIME explanations
+                        lime_data    = explainability.compute_lime_explanations(audio_path     = chunk_path,
+                                                                                chunk_emotions = [emotion_dict],
+                                                                               )
+
+                        explainability.generate_lime_visualization(analysis_id = analysis_id, 
+                                                                   lime_data   = lime_data,
+                                                                  )
+                        
+                        # Generate attention visualization if available
+                        try:
+                            predictor         = get_emotion_predictor()
+                            attention_weights = predictor.get_attention_weights(chunk_path)
+                            
+                            if attention_weights:
+                                explainability.generate_attention_visualization(analysis_id       = analysis_id, 
+                                                                                attention_weights = attention_weights, 
+                                                                                layer_idx         = -1,
+                                                                               )
+
+                        except Exception as att_e:
+                            logger.warning(f"Attention visualization skipped: {att_e}")
+                        
                 except Exception as e:
                     logger.warning(f"Failed to generate explainability: {e}")
             
@@ -196,11 +233,13 @@ def handle_batch_analysis(data):
         
         # Cleanup
         shutil.rmtree(chunk_dir, ignore_errors = True)
+        
         emit('analysis_complete', {'message' : 'Complete'})
         
     except Exception as e:
-        logger.error(f"Batch analysis error: {repr(e)}")
-        error_response = handle_generic_error(e)
+        raise
+        #logger.error(f"Batch analysis error: {repr(e)}")
+        #error_response = handle_generic_error(e)
         
         emit('error', {'message': str(e)})
 
@@ -219,7 +258,7 @@ def handle_streaming_chunk(data):
             return
         
         # Save chunk
-        temp_filename = create_unique_filename('wav')
+        temp_filename = create_unique_filename('webm')
         temp_path     = os.path.join(TEMP_FILES_DIR, temp_filename)
         
         with open(temp_path, 'wb') as f:
@@ -227,8 +266,26 @@ def handle_streaming_chunk(data):
         
         # Convert to WAV
         wav_path = str(Path(temp_path).with_suffix('.converted.wav'))
+        
+        try:
+            wav_path = convert_to_wav_streaming(input_path  = temp_path, 
+                                                output_path = wav_path,
+                                               )
+        
+        except Exception as conv_error:
+            logger.error(f"Streaming conversion failed for chunk {chunk_index}: {conv_error}")
 
-        convert_to_wav(temp_path, wav_path)
+            # If conversion fails, skip this chunk entirely
+            emit('chunk_skipped', {'chunk_index': chunk_index, 'reason': 'conversion_failed'})
+            
+            # Cleanup and return early
+            try:
+                os.remove(temp_path)
+
+            except:
+                pass
+
+            return
         
         # Analyze (streaming mode - faster)
         analyzer    = get_audio_analyzer()
@@ -240,12 +297,48 @@ def handle_streaming_chunk(data):
         if analysis_id:
             try:
                 explainability = ExplainabilityService()
-                
+                    
                 if (('emotions' in result) and ('base' in result['emotions'])):
+                    # Extract emotion prediction dictionary
+                    emotion_dict = result['emotions']['base']
+                        
+                    # Generate emotion distribution
                     explainability.generate_emotion_distribution(analysis_id    = analysis_id,
-                                                                 emotion_scores = result['emotions']['base'],
+                                                                 emotion_scores = emotion_dict,
                                                                 )
+                        
+                    # Compute and visualize SHAP values
+                    shap_data    = explainability.compute_shap_values(audio_path     = wav_path,
+                                                                      emotion_scores = emotion_dict,
+                                                                     )
 
+                    explainability.generate_shap_visualization(analysis_id = analysis_id, 
+                                                               shap_data   = shap_data,
+                                                              )
+                        
+                    # Compute and visualize LIME explanations
+                    lime_data    = explainability.compute_lime_explanations(audio_path     = wav_path,
+                                                                            chunk_emotions = [emotion_dict],
+                                                                           )
+
+                    explainability.generate_lime_visualization(analysis_id = analysis_id, 
+                                                               lime_data   = lime_data,
+                                                              )
+                        
+                    # Generate attention visualization if available
+                    try:
+                        predictor         = get_emotion_predictor()
+                        attention_weights = predictor.get_attention_weights(audio_path = wav_path)
+                            
+                        if attention_weights:
+                            explainability.generate_attention_visualization(analysis_id       = analysis_id, 
+                                                                            attention_weights = attention_weights, 
+                                                                            layer_idx         = -1,
+                                                                           )
+
+                    except Exception as att_e:
+                        logger.warning(f"Attention visualization skipped: {att_e}")
+                        
             except Exception as e:
                 logger.warning(f"Failed to generate explainability: {e}")
         
@@ -278,7 +371,7 @@ def handle_save_recording(data):
             return
         
         # Save recording
-        filename = create_unique_filename('wav')
+        filename = create_unique_filename('webm')
         filepath = os.path.join(RECORDED_FILES_DIR, filename)
         
         with open(filepath, 'wb') as f:
@@ -287,7 +380,18 @@ def handle_save_recording(data):
         # Convert to proper format
         wav_path = str(Path(filepath).with_suffix('.final.wav'))
 
-        convert_to_wav(filepath, wav_path)
+        try:
+            wav_path = convert_to_wav_streaming(input_path  = filepath, 
+                                                output_path = wav_path,
+                                               )
+        
+        except Exception as conv_error:
+            logger.error(f"Recording conversion failed: {conv_error}")
+            
+            # Try regular conversion as fallback
+            wav_path = convert_to_wav(input_path  = filepath, 
+                                      output_path = wav_path,
+                                     )
         
         os.remove(filepath)
         

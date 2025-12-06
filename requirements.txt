@@ -26,6 +26,12 @@ librosa==0.10.1
 soundfile==0.12.1
 ffmpeg-python==0.2.0
 
+# For XAI & Model Explainability
+shap 
+lime 
+librosa 
+scikit-learn
+
 # Data Validation & Models
 pydantic==2.5.0
 dataclasses-json==0.6.3

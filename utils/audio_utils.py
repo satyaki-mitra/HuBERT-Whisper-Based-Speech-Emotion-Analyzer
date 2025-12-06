@@ -2,6 +2,7 @@
 import os
 import re
 import uuid
+import shutil
 import torchaudio
 import subprocess
 import numpy as np
@@ -82,7 +83,7 @@ def convert_to_wav(input_path: str, output_path: str = None) -> str:
         subprocess.run(command, 
                        check          = True, 
                        capture_output = True, 
-                       stderr         = subprocess.PIPE,
+                       text           = True,
                       )
 
         logger.info(f"Successfully converted {input_path} to WAV format")
@@ -93,6 +94,103 @@ def convert_to_wav(input_path: str, output_path: str = None) -> str:
         logger.error(f"FFmpeg conversion failed: {e.stderr.decode('utf-8')}")
         
         raise RuntimeError(f"Audio conversion failed: {repr(e)}")
+
+
+def convert_to_wav_streaming(input_path: str, output_path: str = None) -> str:
+    """
+    Convert audio file to WAV format - optimized for STREAMING (fast!)
+    """
+    if output_path is None:
+        output_path = str(TEMP_FILES_DIR / create_unique_filename('wav'))
+    
+    try:
+        # STRATEGY 1: If it's already a WAV file, just copy it
+        if input_path.lower().endswith('.wav'):
+            shutil.copy2(input_path, output_path)
+            logger.debug(f"Streaming: Copied WAV file directly")
+            
+            return output_path
+        
+        # STRATEGY 2: For webm/ogg from browser: optimized FFmpeg
+        command = ['ffmpeg',
+                   '-y',                     # Overwrite without asking
+                   '-i', input_path,
+                   '-ar', str(SAMPLE_RATE),  # Sample rate
+                   '-ac', '1',               # Mono
+                   '-c:a', 
+                   'pcm_s16le',              # Audio codec
+                   '-loglevel', 'error',     # Minimal logging
+                   '-threads', '1',          # Single thread for faster startup
+                    output_path
+                   ]
+        
+        # Use Popen with timeout for streaming
+        process = subprocess.Popen(command,
+                                   stdout = subprocess.DEVNULL,  # Discard stdout
+                                   stderr = subprocess.PIPE,
+                                   text   = True,
+                                  )
+        
+        # Wait with short timeout for streaming: 10 second maximum
+        try:
+            _, stderr = process.communicate(timeout = 10)  
+            if (process.returncode != 0):
+                raise RuntimeError(f"FFmpeg streaming failed: {stderr}")
+
+        except subprocess.TimeoutExpired:
+            process.kill()
+            logger.warning(f"Streaming conversion timed out, using fallback for: {input_path}")
+            
+            # Fall back to pydub which might be faster for small chunks
+            return streaming_fallback_conversion(input_path, output_path)
+        
+        logger.debug(f"Streaming FFmpeg conversion successful: {input_path}")
+        return output_path
+        
+    except Exception as e:
+        logger.warning(f"Streaming conversion failed, using fallback: {str(e)}")
+        # Emergency fallback
+        return streaming_fallback_conversion(input_path, output_path)
+
+
+def streaming_fallback_conversion(input_path: str, output_path: str) -> str:
+    """
+    Ultra-fast fallback conversion for streaming when FFmpeg is too slow
+    """
+    try:
+        # Use pydub which is often faster for simple conversions
+        audio = AudioSegment.from_file(input_path)
+        
+        # Minimal processing: just ensure mono, don't resample unless needed
+        if (audio.channels > 1):
+            audio = audio.set_channels(1)
+        
+        # Only resample if sample rate is very different
+        if (abs(audio.frame_rate - SAMPLE_RATE) > 4000):
+            audio = audio.set_frame_rate(SAMPLE_RATE)
+        
+        # Export with minimal options
+        audio.export(output_path, 
+                     format     = 'wav',
+                     parameters = ['-acodec', 'pcm_s16le']  # 16-bit PCM
+                    )
+        
+        logger.debug(f"Streaming fallback conversion successful: {input_path}")
+        return output_path
+        
+    except Exception as e:
+        logger.error(f"All streaming conversion methods failed: {repr(e)}")
+        
+        # Last resort: if input is WAV-like, just rename it
+        if input_path.lower().endswith('.wav'):
+            try:
+                shutil.copy2(input_path, output_path)
+                return output_path
+            
+            except:
+                pass
+        
+        raise RuntimeError(f"All audio conversion methods failed for streaming: {str(e)}")
 
 
 def load_audio_as_tensor(audio_path: str, target_sr: int = SAMPLE_RATE) -> np.ndarray:

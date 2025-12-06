@@ -1,9 +1,14 @@
 # DEPENDENCIES
 import sys
 import logging
+import warnings
 from config.settings import LOG_FILE
 from config.settings import LOG_LEVEL
 from config.settings import LOG_FORMAT
+
+
+# Filter out all the warnings
+warnings.filterwarnings("ignore")
 
 
 def setup_logger(name: str = __name__) -> logging.Logger:
