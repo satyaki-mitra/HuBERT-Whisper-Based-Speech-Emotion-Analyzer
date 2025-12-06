@@ -439,7 +439,7 @@ graph LR
     
     subgraph "Decoder"
         EncBlocks --> Context[Encoder Output]
-        StartToken[Start Token<br/>&lt;|startoftranscript|&gt;] --> DecEmbed[Token Embedding]
+        StartToken["START_TOKEN"] --> DecEmbed[Token Embedding]
         DecEmbed --> DecBlocks[32 Transformer Blocks<br/>Cross-Attention to Encoder]
         Context --> DecBlocks
         DecBlocks --> LM[Language Model Head]
