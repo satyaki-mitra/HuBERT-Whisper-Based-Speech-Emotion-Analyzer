@@ -409,7 +409,7 @@ graph TB
     
     style CNN fill:#667eea,color:#fff
     style Transformer fill:#764ba2,color:#fff
-    style Pooling fill:#51cf66
+    style Pooling fill:#51cf66,color:#fff
 ```
 
 #### **Model Specifications**:
@@ -428,6 +428,15 @@ graph TB
 ### 4.2. Whisper Architecture
 
 ```mermaid
+Unable to render rich display
+
+Parse error on line 12:
+... StartToken[<|startoftranscript|>
+-----------------------^
+Expecting 'SQE', 'TAGEND', 'UNICODE_TEXT', 'TEXT', 'TAGSTART', got 'PIPE'
+
+For more information, see https://docs.github.com/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams#creating-mermaid-diagrams
+
 graph LR
     subgraph "Encoder"
         Audio[Audio Input<br/>16kHz] --> MelSpec[Mel Spectrogram<br/>80 bins]
@@ -701,12 +710,12 @@ graph TB
     Split --> Combine[Combine Short Chunks<br/>Target: 10s each]
     Combine --> Chunks[Audio Chunks]
     
-    Chunks --> Normalize[Normalize Amplitude<br/>Range: [-1, 1]]
+    Chunks --> Normalize["Normalize Amplitude<br/>Range: [-1, 1]"]
     Normalize --> Resample[Ensure 16kHz]
     Resample --> Ready[Ready for Inference]
     
     style Convert fill:#667eea,color:#fff
-    style Split fill:#51cf66
+    style Split fill:#51cf66,color:#fff
     style Ready fill:#764ba2,color:#fff
 ```
 
