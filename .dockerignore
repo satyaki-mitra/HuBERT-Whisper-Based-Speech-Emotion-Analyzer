@@ -1,0 +1,49 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Data (will be created at runtime)
+data/uploaded_files/*
+data/recorded_files/*
+data/temp_files/*
+exports/*
+logs/*
+
+# Docs
+docs/
+*.md
+!README.md
+
+# Tests
+tests/
+*.test.py
+
+# Backup
+*_OLD.py
+*.bak
+*.backup
+
+# OS
+.DS_Store
+Thumbs.db
