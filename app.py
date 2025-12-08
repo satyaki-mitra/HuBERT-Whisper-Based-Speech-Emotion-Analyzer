@@ -169,55 +169,59 @@ def handle_batch_analysis(data):
                            }
                 )
             
-            result      = analyzer.analyze_complete(chunk_path, emotion_mode)
-            formatted   = analyzer.format_results_for_display(result)
+            result           = analyzer.analyze_complete(audio_path   = chunk_path, 
+                                                         emotion_mode = emotion_mode,
+                                                        )
+
+            # Get raw emotions before formatting 
+            raw_emotion_dict = result['emotions'].get('raw')
+            print(raw_emotion_dict)
             
-            analysis_id = result.get('metadata', {}).get('analysis_id')
+            # Now format the result for display
+            formatted        = analyzer.format_results_for_display(analysis_result = result)
+            
+            analysis_id      = result.get('metadata', {}).get('analysis_id')
 
             if analysis_id:
                 try:
                     explainability = ExplainabilityService()
                     
-                    if (('emotions' in result) and ('base' in result['emotions'])):
-                        # Extract emotion prediction dictionary
-                        emotion_dict = result['emotions']['base']
+                    # Generate emotion distribution
+                    explainability.generate_emotion_distribution(analysis_id    = analysis_id,
+                                                                 emotion_scores = raw_emotion_dict,
+                                                                )
                         
-                        # Generate emotion distribution
-                        explainability.generate_emotion_distribution(analysis_id    = analysis_id,
-                                                                     emotion_scores = emotion_dict,
-                                                                    )
-                        
-                        # Compute and visualize SHAP values
-                        shap_data    = explainability.compute_shap_values(audio_path     = chunk_path,
-                                                                          emotion_scores = emotion_dict,
-                                                                         )
+                    # Compute and visualize SHAP values
+                    shap_data    = explainability.compute_shap_values(audio_path     = chunk_path,
+                                                                      emotion_scores = raw_emotion_dict,
+                                                                     )
 
-                        explainability.generate_shap_visualization(analysis_id = analysis_id, 
-                                                                   shap_data   = shap_data,
-                                                                  )
+                    explainability.generate_shap_visualization(analysis_id = analysis_id, 
+                                                               shap_data   = shap_data,
+                                                              )
                         
-                        # Compute and visualize LIME explanations
-                        lime_data    = explainability.compute_lime_explanations(audio_path     = chunk_path,
-                                                                                chunk_emotions = [emotion_dict],
-                                                                               )
+                    # Compute and visualize LIME explanations
+                    lime_data    = explainability.compute_lime_explanations(audio_path     = chunk_path,
+                                                                            chunk_emotions = [raw_emotion_dict],
+                                                                           )
 
-                        explainability.generate_lime_visualization(analysis_id = analysis_id, 
-                                                                   lime_data   = lime_data,
-                                                                  )
+                    explainability.generate_lime_visualization(analysis_id = analysis_id, 
+                                                               lime_data   = lime_data,
+                                                              )
                         
-                        # Generate attention visualization if available
-                        try:
-                            predictor         = get_emotion_predictor()
-                            attention_weights = predictor.get_attention_weights(chunk_path)
-                            
-                            if attention_weights:
-                                explainability.generate_attention_visualization(analysis_id       = analysis_id, 
-                                                                                attention_weights = attention_weights, 
-                                                                                layer_idx         = -1,
-                                                                               )
+                    # Generate attention visualization if available
+                    try:
+                        predictor         = get_emotion_predictor()
+                        attention_weights = predictor.get_attention_weights(audio_path = chunk_path)
+                        
+                        if attention_weights:
+                            explainability.generate_attention_visualization(analysis_id       = analysis_id, 
+                                                                            attention_weights = attention_weights, 
+                                                                            layer_idx         = -1,
+                                                                           )
 
-                        except Exception as att_e:
-                            logger.warning(f"Attention visualization skipped: {att_e}")
+                    except Exception as att_e:
+                        logger.warning(f"Attention visualization skipped: {att_e}")
                         
                 except Exception as e:
                     logger.warning(f"Failed to generate explainability: {e}")
@@ -237,10 +241,8 @@ def handle_batch_analysis(data):
         emit('analysis_complete', {'message' : 'Complete'})
         
     except Exception as e:
-        raise
-        #logger.error(f"Batch analysis error: {repr(e)}")
-        #error_response = handle_generic_error(e)
-        
+        logger.error(f"Batch analysis error: {repr(e)}")
+        error_response = handle_generic_error(e)
         emit('error', {'message': str(e)})
 
 

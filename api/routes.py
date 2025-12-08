@@ -210,7 +210,7 @@ def analyze_audio():
 
 
 # EXPLAINABILITY OF RESULTS
-@api_bp.route('/explain/<analysis_id>', methods = ['GET'])
+@api_bp.route('/explain/<analysis_id>', methods=['GET'])
 def get_explainability(analysis_id: str):
     """
     Get explainability results with REAL data
@@ -221,19 +221,55 @@ def get_explainability(analysis_id: str):
         
         if not result or not result.get('available'):
             return jsonify({'error'       : 'Explainability data not found',
-                            'analysis_id' : analysis_id
+                            'analysis_id' : analysis_id,
                           }), 404
         
-        # Add image URLs for frontend
-        viz_dir        = EXPORTS_DIR / 'visualizations'
-        visualizations = dict()
+        # Get visualization URLs from the new endpoint
+        try:
+            viz_response = get_all_visualizations(analysis_id = analysis_id)
+
+            # Check if response was successful
+            if (viz_response[1] == 200):  
+                viz_data = viz_response[0].get_json()
+                
+                if (viz_data and 'visualization_urls' in viz_data):
+                    result['visualization_urls'] = viz_data['visualization_urls']
+                
+                else:
+                    # Fallback: build URLs manually
+                    viz_dir                      = EXPORTS_DIR / 'visualizations'
+                    result['visualization_urls'] = dict()
+
+                    for viz_file in viz_dir.glob(f"{analysis_id}_*.png"):
+                        viz_type = viz_file.stem.replace(f"{analysis_id}_", "")
+                        
+                        if ('attention_layer' in viz_type):
+                            result['visualization_urls']['attention'] = f"/api/v1/visualizations/{analysis_id}/attention"
+                       
+                        elif (viz_type in ['emotion_distribution', 'shap_importance', 'lime_contributions']):
+                            result['visualization_urls'][viz_type] = f"/api/v1/visualizations/{analysis_id}/{viz_type}"
+            
+            else:
+                # Build fallback URLs
+                viz_dir                      = EXPORTS_DIR / 'visualizations'
+                result['visualization_urls'] = dict()
+
+                for viz_file in viz_dir.glob(f"{analysis_id}_*.png"):
+                    viz_type = viz_file.stem.replace(f"{analysis_id}_", "")
+                    
+                    if ('attention_layer' in viz_type):
+                        result['visualization_urls']['attention'] = f"/api/v1/visualizations/{analysis_id}/attention"
+                    
+                    elif (viz_type in ['emotion_distribution', 'shap_importance', 'lime_contributions']):
+                        result['visualization_urls'][viz_type] = f"/api/v1/visualizations/{analysis_id}/{viz_type}"
         
-        for viz_file in viz_dir.glob(f"{analysis_id}_*.png"):
-            viz_type                 = viz_file.stem.replace(f"{analysis_id}_", "")
-            visualizations[viz_type] = f"/api/v1/download/{viz_file.name}"
+        except Exception as viz_error:
+            logger.warning(f"Could not get visualization URLs: {viz_error}")
+            # Still return the basic explainability data
+            result['visualization_urls'] = {}
         
-        result['visualization_urls'] = visualizations
-        
+        logger.info(f"Returning explainability data for {analysis_id}")
+
         return jsonify(result), 200
         
     except Exception as e:
@@ -241,6 +277,164 @@ def get_explainability(analysis_id: str):
         error_response = handle_generic_error(e)
         
         return jsonify(error_response.dict()), 500
+
+
+@api_bp.route('/visualizations/<analysis_id>', methods=['GET'])
+def list_visualizations(analysis_id: str):
+    """
+    List all available visualizations for an analysis
+    """
+    try:
+        viz_dir        = EXPORTS_DIR / 'visualizations'
+        visualizations = list()
+        
+        # Find all visualization files for this analysis
+        for viz_file in viz_dir.glob(f"{analysis_id}_*.png"):
+            # Extract visualization type from filename
+            viz_type = viz_file.stem.replace(f"{analysis_id}_", "")
+            
+            # Handle attention layers specially
+            if 'attention_layer' in viz_type:
+                base_type  = 'attention'
+                layer_info = viz_type.replace('attention_layer_', 'layer_')
+
+            else:
+                base_type  = viz_type
+                layer_info = None
+            
+            visualizations[base_type] = {'url'        : f"/api/v1/visualizations/{analysis_id}/{base_type}",
+                                         'type'       : base_type,
+                                         'filename'   : viz_file.name,
+                                         'layer_info' : layer_info,
+                                        }
+        
+        if not visualizations:
+            return jsonify({'error'       : 'No visualizations found',
+                            'analysis_id' : analysis_id,
+                          }), 404
+        
+        return jsonify({'analysis_id'    : analysis_id,
+                        'visualizations' : visualizations,
+                        'count'          : len(visualizations),
+                      }), 200
+        
+    except Exception as e:
+        logger.error(f"List visualizations failed: {repr(e)}")
+        error_response = handle_generic_error(e)
+
+        return jsonify(error_response.dict()), 500
+
+
+@api_bp.route('/visualizations/<analysis_id>/<viz_type>', methods=['GET'])
+def get_visualization(analysis_id: str, viz_type: str):
+    """
+    Get specific visualization image
+    """
+    try:
+        viz_dir           = EXPORTS_DIR / 'visualizations'
+        
+        # Build search patterns based on viz_type
+        possible_patterns = list()
+        
+        if (viz_type == 'attention'):
+            # For attention, return the first layer
+            possible_patterns.append(f"{analysis_id}_attention_layer_0.png")
+            possible_patterns.append(f"{analysis_id}_attention_layer_*.png")
+
+        elif( viz_type == 'emotion_distribution'):
+            possible_patterns.append(f"{analysis_id}_emotion_distribution.png")
+
+        elif (viz_type == 'shap_importance'):
+            possible_patterns.append(f"{analysis_id}_shap_importance.png")
+
+        elif (viz_type == 'lime_contributions'):
+            possible_patterns.append(f"{analysis_id}_lime_contributions.png")
+
+        else:
+            # Try exact match
+            possible_patterns.append(f"{analysis_id}_{viz_type}.png")
+        
+        # Search for the file
+        viz_file = None
+
+        for pattern in possible_patterns:
+            if ('*' in pattern):
+                files = list(viz_dir.glob(pattern))
+                
+                if files:
+                    viz_file = files[0]
+                    break
+            
+            else:
+                viz_file = viz_dir / pattern
+                if viz_file.exists():
+                    break
+        
+        if not viz_file or not viz_file.exists():
+            return jsonify({'error'       : 'Visualization not found',
+                            'analysis_id' : analysis_id,
+                            'type'        : viz_type,
+                          }), 404
+        
+        # Serve the image
+        response                          = send_file(viz_file, mimetype = 'image/png')
+        
+        # Add cache headers (1 hour for static images)
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        
+        logger.info(f"Served visualization: {viz_file.name}")
+
+        return response
+        
+    except Exception as e:
+        logger.error(f"Visualization request failed: {repr(e)}")
+        
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/visualizations/<analysis_id>/all', methods=['GET'])
+def get_all_visualizations(analysis_id: str):
+    """
+    Get all visualization URLs for an analysis in one call
+    """
+    try:
+        viz_dir        = EXPORTS_DIR / 'visualizations'
+        viz_urls       = dict()
+        
+        # Define expected visualization types
+        expected_types = ['emotion_distribution',
+                          'shap_importance', 
+                          'lime_contributions',
+                          'attention',
+                         ]
+        
+        # Check which visualizations exist
+        for viz_type in expected_types:
+            # Check if file exists
+            if (viz_type == 'attention'):
+                # Check for any attention layer
+                pattern = f"{analysis_id}_attention_layer_*.png"
+
+                if (list(viz_dir.glob(pattern))):
+                    viz_urls[viz_type] = f"/api/v1/visualizations/{analysis_id}/{viz_type}"
+            
+            else:
+                filename = f"{analysis_id}_{viz_type}.png"
+                
+                if ((viz_dir / filename).exists()):
+                    viz_urls[viz_type] = f"/api/v1/visualizations/{analysis_id}/{viz_type}"
+        
+        return jsonify({'analysis_id'        : analysis_id,
+                        'visualization_urls' : viz_urls,
+                        'available_types'    : list(viz_urls.keys()),
+                      }), 200
+        
+    except Exception as e:
+        logger.error(f"Get all visualizations failed: {repr(e)}")
+        error_response = handle_generic_error(e)
+
+        return jsonify(error_response.dict()), 500
+
 
 
 # EXPORT RESULTS
@@ -277,13 +471,27 @@ def export_results():
         return jsonify(error_response.dict()), 500
 
 
-@api_bp.route('/download/<filename>', methods = ['GET'])
+@api_bp.route('/download/<path:filename>', methods=['GET'])
 def download_file(filename: str):
     """
-    Download exported file
+    Download exported file from exports directory
     """
     try:
-        filepath = EXPORTS_DIR / filename
+        # Security for preventing directory traversal: Normalize the path
+        safe_filename = os.path.normpath(filename)
+        
+        # Check if path tries to go up directories
+        if (('..' in safe_filename) or (safe_filename.startswith('/'))):
+            return jsonify({'error' : 'Invalid file path'}), 403
+        
+        filepath = EXPORTS_DIR / safe_filename
+        
+        # Additional security: verify file is within EXPORTS_DIR
+        try:
+            filepath.resolve().relative_to(EXPORTS_DIR.resolve())
+        
+        except ValueError:
+            return jsonify({'error': 'Access denied'}), 403
         
         if not filepath.exists():
             return jsonify({'error': 'File not found'}), 404
@@ -292,7 +500,8 @@ def download_file(filename: str):
         
     except Exception as e:
         logger.error(f"Download failed: {repr(e)}")
-        return jsonify({'error' : str(e)}), 500
+        
+        return jsonify({'error': str(e)}), 500
 
 
 
