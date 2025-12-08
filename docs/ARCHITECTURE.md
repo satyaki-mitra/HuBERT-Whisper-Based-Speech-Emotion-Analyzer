@@ -1,942 +1,893 @@
-# 🏗️ EmotiVoice System Architecture
+# EmotiVoice System Architecture
+
+**Version:** 1.0.0  
+**Last Updated:** December 2025
+
+---
 
 ## Table of Contents
 
-System Overview
-Architecture Layers
-Data Flow
-Model Architecture
-Mathematical Foundations
-Component Specifications
-API Architecture
-Performance Optimization
-Scalability & Deployment
+1. [System Overview](#system-overview)
+2. [Architecture Diagrams](#architecture-diagrams)
+3. [Component Design](#component-design)
+4. [Data Flow](#data-flow)
+5. [AI Models & Mathematics](#ai-models--mathematics)
+6. [Processing Pipeline](#processing-pipeline)
+7. [Technology Stack](#technology-stack)
 
 ---
 
-## 1. System Overview:
+## System Overview
 
-EmotiVoice is a production-ready Speech Emotion Recognition (SER) platform that combines HuBERT for emotion detection and Whisper for transcription, with explainable AI capabilities.
+EmotiVoice is a production-grade speech emotion recognition and transcription platform that combines state-of-the-art deep learning models (HuBERT for emotion classification and Whisper for transcription) with explainable AI techniques (SHAP, LIME, attention visualization).
 
-```mermaid
-graph TB
-    subgraph "Client Layer"
-        UI[Web Interface]
-        Mobile[Mobile App]
-    end
-    
-    subgraph "API Gateway Layer"
-        Flask[Flask Server]
-        SocketIO[SocketIO WebSocket]
-        REST[REST API v1]
-    end
-    
-    subgraph "Service Layer"
-        AA[Audio Analyzer]
-        EP[Emotion Predictor]
-        TR[Transcriber]
-        EX[Explainability Service]
-        ES[Export Service]
-    end
-    
-    subgraph "Model Layer"
-        HuBERT[HuBERT Model<br/>facebook/hubert-base-ls960]
-        Whisper[Whisper Model<br/>openai/whisper-large-v3]
-    end
-    
-    subgraph "Processing Layer"
-        FE[Feature Extractor]
-        AP[Audio Preprocessor]
-        SHAP[SHAP Computer]
-        LIME[LIME Explainer]
-    end
-    
-    subgraph "Storage Layer"
-        FS[File System]
-        Redis[Redis Cache]
-        Celery[Celery Queue]
-    end
-    
-    UI --> Flask
-    Mobile --> Flask
-    Flask --> REST
-    Flask --> SocketIO
-    REST --> AA
-    SocketIO --> AA
-    AA --> EP
-    AA --> TR
-    AA --> EX
-    EP --> HuBERT
-    TR --> Whisper
-    EX --> FE
-    EX --> SHAP
-    EX --> LIME
-    AP --> FE
-    ES --> FS
-    REST --> Celery
-    Celery --> Redis
-    
-    style HuBERT fill:#667eea
-    style Whisper fill:#764ba2
-    style SHAP fill:#51cf66
-    style LIME fill:#ffd43b
-```
+### Key Capabilities
+
+- **Multi-level Emotion Recognition:** Base (6), Granular (20+), Complex (combinations)
+- **Multilingual Transcription:** 90+ languages via Whisper large-v3
+- **Real-time Streaming:** WebSocket-based live audio processing
+- **Explainable AI:** SHAP, LIME, attention heatmaps for transparency
+- **Scalable Architecture:** Async task processing with Celery
 
 ---
 
-## 2. Architecture Layers
+## Architecture Diagrams
 
-### 2.1. Presentation Layer
-
-```mermaid
-graph LR
-    subgraph "Frontend"
-        Landing[Landing Page<br/>index.html]
-        Batch[Batch Analysis<br/>batch_analysis.html]
-        Stream[Live Streaming<br/>live_streaming.html]
-        Explain[Explainability Dashboard<br/>explainability.html]
-    end
-    
-    subgraph "Client-Side Logic"
-        SocketClient[Socket.io Client]
-        RecordRTC[RecordRTC Library]
-        Plotly[Plotly.js Visualizations]
-        Toast[Toastify Notifications]
-    end
-    
-    Landing --> Batch
-    Landing --> Stream
-    Landing --> Explain
-    Batch --> SocketClient
-    Stream --> RecordRTC
-    Stream --> SocketClient
-    Explain --> Plotly
-    Batch --> Toast
-    Stream --> Toast
-```
-
-#### **Technologies**:
-
-- HTML5 + CSS3 (Inter font family)
-- Vanilla JavaScript (ES6+)
-- Socket.io Client (v4.0.0)
-- RecordRTC (WebRTC recording)
-- Plotly.js (v2.27.0)
-- Toastify.js (notifications)
-
-### 2.2. Application Layer
+### High-Level System Architecture
 
 ```mermaid
 graph TB
-    subgraph "Flask Application"
-        App[app.py<br/>Main Entry Point]
-        Routes[api/routes.py<br/>REST Endpoints]
-        Tasks[api/tasks.py<br/>Async Tasks]
-        
-        App --> Routes
-        App --> Tasks
+    subgraph Client["Client Layer"]
+        WEB[Web Browser]
+        MOBILE[Mobile App]
     end
     
-    subgraph "Configuration"
-        Settings[config/settings.py]
-        Models[config/models.py<br/>Pydantic Schemas]
-        HConfig[config/hubert_config.py]
-        WConfig[config/whisper_config.py]
-        
-        Settings --> Models
-        Settings --> HConfig
-        Settings --> WConfig
+    subgraph Frontend["Frontend (Templates)"]
+        INDEX[Landing Page]
+        BATCH[Batch Analysis UI]
+        STREAM[Live Streaming UI]
+        EXPLAIN[Explainability Dashboard]
     end
     
-    subgraph "Middleware"
-        CORS[CORS Handler]
-        ErrorHandler[Error Handler]
-        Logger[Logging Middleware]
+    subgraph Backend["Backend Layer (Flask + SocketIO)"]
+        API[REST API<br/>/api/v1/*]
+        WS[WebSocket Handler<br/>Socket.IO]
         
-        App --> CORS
-        App --> ErrorHandler
-        App --> Logger
+        subgraph Routes["API Routes"]
+            HEALTH[Health Check]
+            UPLOAD[File Upload]
+            ANALYZE[Analysis Endpoint]
+            EXPLAINER[Explainability API]
+            EXPORT[Export Service]
+        end
     end
     
-    Routes --> Settings
-    Tasks --> Settings
+    subgraph Queue["Task Queue (Celery + Redis)"]
+        REDIS[(Redis)]
+        WORKER1[Worker 1]
+        WORKER2[Worker 2]
+        WORKERN[Worker N]
+    end
+    
+    subgraph Services["Core Services"]
+        ANALYZER[Audio Analyzer]
+        PREDICTOR[Emotion Predictor<br/>HuBERT]
+        TRANSCRIBER[Transcriber<br/>Whisper]
+        XAI[Explainability Service<br/>SHAP/LIME]
+        FEATURES[Feature Extractor]
+    end
+    
+    subgraph Models["AI Models"]
+        HUBERT[HuBERT Base<br/>facebook/hubert-base-ls960]
+        WHISPER[Whisper Large-v3<br/>OpenAI]
+    end
+    
+    subgraph Storage["Storage"]
+        FILES[File System<br/>Audio Files]
+        EXPORTS[Exports<br/>JSON/CSV/PDF]
+        VIZ[Visualizations<br/>PNG Images]
+    end
+    
+    WEB --> Frontend
+    MOBILE --> Frontend
+    Frontend --> API
+    Frontend --> WS
+    
+    API --> Routes
+    WS --> ANALYZER
+    Routes --> Queue
+    
+    Queue --> WORKER1
+    Queue --> WORKER2
+    Queue --> WORKERN
+    
+    WORKER1 --> Services
+    WORKER2 --> Services
+    WORKERN --> Services
+    
+    ANALYZER --> PREDICTOR
+    ANALYZER --> TRANSCRIBER
+    ANALYZER --> XAI
+    
+    PREDICTOR --> HUBERT
+    TRANSCRIBER --> WHISPER
+    XAI --> FEATURES
+    
+    Services --> Storage
+    
+    REDIS -.-> Queue
 ```
 
-#### **Key Components**:
-
-| Component | Purpose | Technology |
-|-----------|---------|------------|
-| Flask App | HTTP server | Flask 2.x |
-| SocketIO | WebSocket server | Flask-SocketIO |
-| Celery | Task queue | Celery + Redis |
-| Pydantic | Data validation | Pydantic v2 |
-
-### 2.3. Service Layer
-
-```mermaid
-graph TB
-    subgraph "Core Services"
-        AA[Audio Analyzer<br/>services/audio_analyzer.py]
-        EP[Emotion Predictor<br/>services/emotion_predictor.py]
-        TR[Transcriber<br/>services/transcriber.py]
-    end
-    
-    subgraph "Explainability Services"
-        EX[Explainability Service<br/>services/explainer.py]
-        FE[Feature Extractor<br/>services/feature_extractor.py]
-    end
-    
-    subgraph "Utility Services"
-        ES[Export Service<br/>services/exporters.py]
-    end
-    
-    AA --> EP
-    AA --> TR
-    AA --> EX
-    EX --> FE
-    ES --> EX
-    
-    style AA fill:#667eea,color:#fff
-    style EP fill:#764ba2,color:#fff
-    style TR fill:#51cf66
-```
-
-#### **Service Architecture Pattern: Singleton**
-
-```python
-# Pattern used across all services
-class ServiceClass:
-    def __init__(self):
-        # Initialize heavy resources once
-        self.model = load_model()
-    
-_instance = None
-
-def get_service() -> ServiceClass:
-    global _instance
-
-    if _instance is None:
-        _instance = ServiceClass()
-    
-    return _instance
-```
-
----
-
-## 3. Data Flow
-
-### 3.1. Batch Analysis Flow
+### Request Flow - Batch Analysis
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Frontend
-    participant Flask
-    participant SocketIO
-    participant Analyzer
-    participant HuBERT
-    participant Whisper
-    participant Explainer
+    participant U as User
+    participant F as Frontend
+    participant A as API
+    participant C as Celery
+    participant S as Services
+    participant M as Models
+    participant X as XAI Service
     
-    User->>Frontend: Upload Audio File
-    Frontend->>Flask: POST /api/v1/upload
-    Flask-->>Frontend: {filepath, filename}
+    U->>F: Upload Audio File
+    F->>A: POST /upload
+    A->>A: Save to disk
+    A-->>F: {filepath}
     
-    User->>Frontend: Click "Start Analysis"
-    Frontend->>SocketIO: emit('analyze_batch')
+    F->>A: POST /analyze
+    A->>C: Queue Task
+    C-->>A: {task_id}
+    A-->>F: 202 Accepted
     
-    SocketIO->>Analyzer: Split audio on silence
-    Analyzer-->>SocketIO: [chunk_1, chunk_2, ...]
+    F->>A: GET /status/{task_id}
+    A-->>F: {status: "processing", progress: 0}
+    
+    C->>S: Execute analyze_audio_task
+    S->>S: Split audio on silence
     
     loop For each chunk
-        SocketIO->>Analyzer: analyze_complete(chunk)
-        Analyzer->>Whisper: transcribe(chunk)
-        Whisper-->>Analyzer: {text, language}
-        Analyzer->>HuBERT: predict_emotions(chunk)
-        HuBERT-->>Analyzer: {base_emotions}
-        Analyzer->>HuBERT: predict_granular(base)
-        HuBERT-->>Analyzer: {granular, complex}
-        
-        Analyzer->>Explainer: generate_visualizations()
-        Explainer->>Explainer: compute_shap_values()
-        Explainer->>Explainer: compute_lime_explanations()
-        Explainer->>Explainer: extract_attention_weights()
-        Explainer-->>Analyzer: {visualization_paths}
-        
-        Analyzer-->>SocketIO: format_results()
-        SocketIO-->>Frontend: emit('chunk_result')
-        Frontend->>User: Display Result Card
+        S->>M: HuBERT emotion prediction
+        M-->>S: Emotion probabilities
+        S->>M: Whisper transcription
+        M-->>S: Transcribed text
+        S->>S: Map to granular emotions
+        S->>S: Detect complex emotions
     end
     
-    SocketIO-->>Frontend: emit('analysis_complete')
-    Frontend->>User: Show completion message
+    S->>X: Generate SHAP values
+    X-->>S: Feature importance
+    S->>X: Generate LIME explanations
+    X-->>S: Segment contributions
+    S->>X: Generate attention viz
+    X-->>S: Attention heatmaps
+    S->>X: Generate emotion distribution
+    X-->>S: Distribution chart
+    
+    S-->>C: Complete result
+    C-->>A: Update task status
+    
+    F->>A: GET /status/{task_id}
+    A-->>F: {status: "completed", result: {...}}
+    
+    F->>A: GET /explain/{analysis_id}
+    A-->>F: {visualizations: {...}}
+    
+    F->>A: GET /visualizations/{id}/{type}
+    A-->>F: PNG Image Data
 ```
 
-#### **Time Complexity**: O(n·m) where n = number of chunks, m = model inference time
-
-### 3.2. Live Streaming Flow
+### Request Flow - Live Streaming
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Browser
-    participant RecordRTC
-    participant SocketIO
-    participant Analyzer
-    participant Models
+    participant U as User
+    participant B as Browser
+    participant WS as WebSocket
+    participant A as Audio Analyzer
+    participant M as Models
+    participant X as XAI Service
     
-    User->>Browser: Click "Start Recording"
-    Browser->>RecordRTC: getUserMedia({audio: true})
-    RecordRTC-->>Browser: MediaStream
+    U->>B: Click "Start Recording"
+    B->>B: getUserMedia() - Access mic
+    B->>B: Initialize RecordRTC
     
-    RecordRTC->>RecordRTC: Start recording (timeSlice: 3000ms)
-    
-    loop Every 3 seconds
-        RecordRTC->>Browser: ondataavailable(blob)
-        Browser->>SocketIO: emit('streaming_chunk', {audio_data})
-        SocketIO->>Analyzer: analyze_streaming(chunk)
-        Analyzer->>Models: Fast inference (base emotions only)
-        Models-->>Analyzer: {emotions, transcription}
-        Analyzer-->>SocketIO: {formatted_result}
-        SocketIO-->>Browser: emit('streaming_result')
-        Browser->>User: Display real-time result
-    end
-    
-    User->>Browser: Click "Stop Recording"
-    Browser->>RecordRTC: stopRecording()
-    RecordRTC->>SocketIO: emit('save_recording', {full_blob})
-    SocketIO->>Analyzer: Save + convert to WAV
-    Analyzer-->>SocketIO: {filepath}
-    SocketIO-->>Browser: emit('save_complete')
-    Browser->>User: Show download button
-```
-
-#### **Latency Target**: < 1ms per chunk (10-second audio)
-
-### 3.3. Explainability Pipeline
-
-```mermaid
-graph TB
-    subgraph "Input"
-        Audio[Audio File]
-        Emotions[Emotion Predictions]
-    end
-    
-    subgraph "Feature Extraction"
-        Audio --> Librosa[Librosa Analysis]
-        Librosa --> Pitch[Pitch Variance]
-        Librosa --> Energy[Energy RMS]
-        Librosa --> Spectral[Spectral Centroid]
-        Librosa --> ZCR[Zero Crossing Rate]
-        Librosa --> MFCC[MFCCs 1-13]
-        Librosa --> Jitter[Jitter Calculation]
-        Librosa --> Shimmer[Shimmer Calculation]
-        Librosa --> Formant[Formant Ratio]
-    end
-    
-    subgraph "SHAP Analysis"
-        Pitch --> SHAP[SHAP Computer]
-        Energy --> SHAP
-        Spectral --> SHAP
-        ZCR --> SHAP
-        MFCC --> SHAP
-        Jitter --> SHAP
-        Shimmer --> SHAP
-        Formant --> SHAP
-        Emotions --> SHAP
+    loop Every 10 seconds
+        B->>B: Capture audio chunk
+        B->>B: Convert to WebM
+        B->>WS: emit('streaming_chunk')
         
-        SHAP --> SHAPViz[SHAP Visualization<br/>Feature Importance Bar Chart]
-    end
-    
-    subgraph "LIME Analysis"
-        Audio --> Segment[Segment Audio<br/>20 segments]
-        Segment --> SegmentFeatures[Extract Segment Features]
-        SegmentFeatures --> Contribution[Compute Contributions]
-        Emotions --> Contribution
-        Contribution --> LIMEViz[LIME Visualization<br/>Contribution Bar Chart]
-    end
-    
-    subgraph "Attention Analysis"
-        Audio --> HuBERTModel[HuBERT Model]
-        HuBERTModel --> AttentionWeights[Extract Attention Weights<br/>12 layers × N heads]
-        AttentionWeights --> AttentionViz[Attention Heatmap<br/>Layer-wise visualization]
-    end
-    
-    SHAPViz --> Output[PNG Images]
-    LIMEViz --> Output
-    AttentionViz --> Output
-    Output --> Dashboard[Explainability Dashboard]
-    
-    style SHAP fill:#51cf66
-    style Contribution fill:#ffd43b
-    style AttentionWeights fill:#667eea
-```
-
----
-
-## 4. Model Architecture
-
-### 4.1. HuBERT Architecture
-
-```mermaid
-graph TB
-    subgraph "Input Processing"
-        Audio[Raw Audio Waveform<br/>16kHz, Mono]
-        Audio --> FeatureExtractor[Wav2Vec2 Feature Extractor<br/>Frame: 25ms, Stride: 20ms]
-        FeatureExtractor --> Features["Feature Sequence<br/>Shape: [1, T, 768]"]
-    end
-    
-    subgraph "HuBERT Encoder"
-        Features --> CNN[7-layer CNN<br/>Kernel: 10,3,3,3,3,2,2<br/>Stride: 5,2,2,2,2,2,2]
-        CNN --> Transformer[12-layer Transformer<br/>Hidden: 768<br/>Heads: 12<br/>FFN: 3072]
+        WS->>WS: Save to temp file
+        WS->>WS: Convert to WAV (FFmpeg)
+        WS->>A: analyze_streaming()
         
-        Transformer --> Layer1[Layer 1<br/>Self-Attention + FFN]
-        Layer1 --> Layer2[Layer 2]
-        Layer2 --> Layer3[...]
-        Layer3 --> Layer12[Layer 12]
+        A->>M: HuBERT (base emotions only)
+        M-->>A: Emotion scores
+        A->>M: Whisper (fast mode)
+        M-->>A: Transcription
+        
+        A->>X: Generate explainability
+        X-->>A: SHAP/LIME/Attention
+        
+        A-->>WS: Analysis result
+        WS->>B: emit('streaming_result')
+        B->>B: Update UI in real-time
     end
     
-    subgraph "Classification Head"
-        Layer12 --> Pooling[Pooling Strategy<br/>Mean/Max/Sum]
-        Pooling --> Dropout[Dropout: 0.1]
-        Dropout --> Dense[Dense Layer: 768→768]
-        Dense --> Tanh[Tanh Activation]
-        Tanh --> Dropout2[Dropout: 0.1]
-        Dropout2 --> Output[Output Layer: 768→6]
-        Output --> Softmax[Softmax]
-        Softmax --> Emotions[6 Emotion Probabilities]
-    end
-    
-    style CNN fill:#667eea,color:#fff
-    style Transformer fill:#764ba2,color:#fff
-    style Pooling fill:#51cf66,color:#fff
+    U->>B: Click "Stop Recording"
+    B->>WS: emit('save_recording')
+    WS->>WS: Merge all chunks
+    WS->>WS: Save complete recording
+    WS->>B: emit('save_complete')
 ```
 
-#### **Model Specifications**:
-
-| Parameter | Value |
-|-----------|-------| 
-| Architecture | HuBERT-Base |
-| Parameters | ~95M |
-| Hidden Size | 768 | 
-| Layers | 12 | 
-| Attention Heads| 12 |
-| FFN Dimension| 3072 | 
-| Pooling Mode | Mean (configurable)| 
-| Output Classes | 6 emotions |
-
-### 4.2. Whisper Architecture
+### Component Interaction - Emotion Prediction
 
 ```mermaid
 graph LR
-    subgraph "Encoder"
-        Audio[Audio Input<br/>16kHz] --> MelSpec[Mel Spectrogram<br/>80 bins]
-        MelSpec --> Conv1[Conv1D: 1→384]
-        Conv1 --> Conv2[Conv2D: 384→768]
-        Conv2 --> PE[Positional Encoding]
-        PE --> EncBlocks[32 Transformer Blocks<br/>Hidden: 1280<br/>Heads: 20]
+    subgraph Input
+        AUDIO[Audio File<br/>WAV/MP3/etc.]
     end
     
-    subgraph "Decoder"
-        EncBlocks --> Context[Encoder Output]
-        StartToken["START_TOKEN"] --> DecEmbed[Token Embedding]
-        DecEmbed --> DecBlocks[32 Transformer Blocks<br/>Cross-Attention to Encoder]
-        Context --> DecBlocks
-        DecBlocks --> LM[Language Model Head]
-        LM --> Tokens[Output Tokens]
+    subgraph Preprocessing
+        CONVERT[FFmpeg<br/>Convert to WAV]
+        LOAD[Load as Tensor<br/>torchaudio]
+        RESAMPLE[Resample to 16kHz<br/>if needed]
+        MONO[Convert to Mono<br/>if stereo]
     end
     
-    style EncBlocks fill:#667eea,color:#fff
-    style DecBlocks fill:#764ba2,color:#fff
+    subgraph Feature Extraction
+        FEAT[Wav2Vec2<br/>Feature Extractor]
+        FEATS[Raw Audio Features<br/>768-dim]
+    end
+    
+    subgraph Model Inference
+        HUBERT[HuBERT Model<br/>12 Transformer Layers]
+        POOL[Pooling Layer<br/>Mean pooling]
+        CLASSIFIER[Classification Head<br/>Dense + Dropout]
+        SOFTMAX[Softmax<br/>6 class probabilities]
+    end
+    
+    subgraph Postprocessing
+        BASE[Base Emotions<br/>6 classes]
+        GRANULAR[Granular Mapping<br/>20+ emotions]
+        COMPLEX[Complex Detection<br/>Elation, etc.]
+    end
+    
+    subgraph Output
+        RESULT[Emotion Results<br/>JSON]
+    end
+    
+    AUDIO --> CONVERT
+    CONVERT --> LOAD
+    LOAD --> RESAMPLE
+    RESAMPLE --> MONO
+    MONO --> FEAT
+    FEAT --> FEATS
+    FEATS --> HUBERT
+    HUBERT --> POOL
+    POOL --> CLASSIFIER
+    CLASSIFIER --> SOFTMAX
+    SOFTMAX --> BASE
+    BASE --> GRANULAR
+    BASE --> COMPLEX
+    GRANULAR --> RESULT
+    COMPLEX --> RESULT
 ```
-
-#### **Model Specifications**:
-
-| Parameter | Whisper Large-v3 |
-|-----------|------------------|
-| Parameters | 1550M | 
-| Encoder Layers | 32 | 
-| Decoder Layers | 32 |
-| Hidden Size | 1280 | 
-| Attention Heads | 20 |
-| Languages | 99+ | 
-| Vocabulary | 51,865 tokens |
 
 ---
 
-## 5. Mathematical Foundations
+## Component Design
 
-### 5.1. Emotion Detection
+### 1. Audio Analyzer (`services/audio_analyzer.py`)
 
-**Softmax Classification**
+**Responsibility:** Orchestrate complete audio analysis pipeline
 
-For a given audio feature vector x, the probability of emotion class i is:
+**Key Methods:**
+- `analyze_complete()`: Full analysis (transcription + emotions)
+- `analyze_streaming()`: Fast analysis for real-time (base emotions only)
+- `format_results_for_display()`: Format results for frontend
 
-```math
-P(y=i∣x)=ezi∑j=1CezjP(y = i | \mathbf{x}) = \frac{e^{z_i}}{\sum_{j=1}^{C} e^{z_j}}P(y=i∣x)=∑j=1C​ezj​ezi​​
-```
-
-Where:
-
-- zi=wiTh+biz_i = \mathbf{w}_i^T \mathbf{h} + b_i
-- zi​=wiT​h+bi​ (logit for class *i*)
-
-h\mathbf{h}
-h = pooled hidden representation from HuBERT
-
-C=6C = 6
-C=6 (number of emotion classes)
-
-wi,bi\mathbf{w}_i, b_i
-wi​,bi​ = learned weights and bias
-
-
-**Pooling Strategies**
-**1. Mean Pooling:**
-
-```math
-hmean=1T∑t=1Tht\mathbf{h}_{mean} = \frac{1}{T} \sum_{t=1}^{T} \mathbf{h}_thmean​=T1​t=1∑T​ht​
-```
-
-**2. Max Pooling:**
-
-```math
-hmax=max⁡t=1Tht\mathbf{h}_{max} = \max_{t=1}^{T} \mathbf{h}_thmax​=t=1maxT​ht​
-```
-
-**3. Sum Pooling:**
-
-```math
-hsum=∑t=1Tht\mathbf{h}_{sum} = \sum_{t=1}^{T} \mathbf{h}_thsum​=t=1∑T​ht​
-Where:
-
-TT
-T = sequence length
-
-ht\mathbf{h}_t
-ht​ = hidden state at time step *t*
-```
-
-
-### 5.2. Granular Emotion Mapping
-
-Given base emotion probabilities:
-
-```math
-Pbase={p1,...,p6}P_{base} = \{p_1, ..., p_6\}
-
-- Pbase​={p1​,...,p6​}:
-```
-
-- **Primary Granular Emotions**:
-
-```math
-Eprimary={Mapping[edominant].primaryif pdominant≥θprimary∅otherwiseE_{primary} = \begin{cases}
-\text{Mapping}[e_{dominant}].\text{primary} & \text{if } p_{dominant} \geq \theta_{primary} \\
-\emptyset & \text{otherwise}
-\end{cases}Eprimary​={Mapping[edominant​].primary∅​if pdominant​≥θprimary​otherwise​
-Secondary Granular Emotions:
-Esecondary={Mapping[edominant].secondaryif 0.3≤pdominant<0.7∅otherwiseE_{secondary} = \begin{cases}
-\text{Mapping}[e_{dominant}].\text{secondary} & \text{if } 0.3 \leq p_{dominant} < 0.7 \\
-\emptyset & \text{otherwise}
-\end{cases}Esecondary​={Mapping[edominant​].secondary∅​if 0.3≤pdominant​<0.7otherwise​
-Where:
-
-edominant=arg⁡max⁡ipie_{dominant} = \arg\max_i p_i
-edominant​=argmaxi​pi​
-θprimary\theta_{primary}
-θprimary​ = threshold (default: 0.3-0.4)
-```
-
-
-### 5.3. Complex Emotion Detection
-
-For emotion fusion, given top-2 emotions (e1,e2)(e_1, e_2)
-
-```math
-(e1​,e2​) with probabilities (p1,p2)(p_1, p_2)
-(p1​,p2​):
-
-Blended Emotion Score:
-scomplex=p1+p22s_{complex} = \frac{p_1 + p_2}{2}scomplex​=2p1​+p2​​
-Complex Emotion Assignment:
-Ecomplex={ComplexMap[(e1,e2)]if scomplex>0.3 and (e1,e2)∈ComplexMap∅otherwiseE_{complex} = \begin{cases}
-\text{ComplexMap}[(e_1, e_2)] & \text{if } s_{complex} > 0.3 \text{ and } (e_1, e_2) \in \text{ComplexMap} \\
-\emptyset & \text{otherwise}
-\end{cases}Ecomplex​={ComplexMap[(e1​,e2​)]∅​if scomplex​>0.3 and (e1​,e2​)∈ComplexMapotherwise​
-Example mappings:
-
-(Happiness, Surprise) → Elation
-(Sadness, Anger) → Bitterness
-(Fear, Sadness) → Desperation
-```
-
-### 5.4. SHAP Feature Attribution
-
-```math
-For feature *j*, the SHAP value ϕj\phi_j
-ϕj​ represents its contribution to prediction:
-
-ϕj=∑S⊆F∖{j}∣S∣!(∣F∣−∣S∣−1)!∣F∣![fS∪{j}(x)−fS(x)]\phi_j = \sum_{S \subseteq F \setminus \{j\}} \frac{|S|!(|F| - |S| - 1)!}{|F|!} [f_{S \cup \{j\}}(\mathbf{x}) - f_S(\mathbf{x})]ϕj​=S⊆F∖{j}∑​∣F∣!∣S∣!(∣F∣−∣S∣−1)!​[fS∪{j}​(x)−fS​(x)]
-Simplified Approximation (used in implementation):
-ϕj≈fj⋅pdominant⋅wemotion,j\phi_j \approx f_j \cdot p_{dominant} \cdot w_{emotion,j}ϕj​≈fj​⋅pdominant​⋅wemotion,j​
-Where:
-
-fjf_j
-fj​ = normalized feature value (0-1)
-
-pdominantp_{dominant}
-pdominant​ = confidence of dominant emotion
-
-wemotion,jw_{emotion,j}
-wemotion,j​ = emotion-specific feature weight
-
-
-Normalization:
-ϕjnorm=ϕj∑k=1nϕk\phi_j^{norm} = \frac{\phi_j}{\sum_{k=1}^{n} \phi_k}ϕjnorm​=∑k=1n​ϕk​ϕj​​
-```
-
-### 5.5. LIME Local Explanations
-
-```math
-Audio is segmented into N segments. For segment i:
-Contribution Score:
-ci=α⋅Energyi+β⋅PitchVari−γc_i = \alpha \cdot \text{Energy}_i + \beta \cdot \text{PitchVar}_i - \gammaci​=α⋅Energyi​+β⋅PitchVari​−γ
-Where:
-
-Energyi=1L∑t=1Lxi,t2\text{Energy}_i = \sqrt{\frac{1}{L} \sum_{t=1}^{L} x_{i,t}^2}
-Energyi​=L1​∑t=1L​xi,t2​​ (RMS energy)
-
-PitchVari=Var(xi,t)\text{PitchVar}_i = \text{Var}(x_{i,t})
-PitchVari​=Var(xi,t​) (pitch variance)
-
-α=2.0,β=0.5,γ=0.5\alpha = 2.0, \beta = 0.5, \gamma = 0.5
-α=2.0,β=0.5,γ=0.5 (empirical weights)
-
-ci∈[−1,1]c_i \in [-1, 1]
-ci​∈[−1,1] (clipped)
-
-
-Positive/Negative Contributors:
-Positive={i:ci>0.2}\text{Positive} = \{i : c_i > 0.2\}Positive={i:ci​>0.2}
-Negative={i:ci<−0.2}\text{Negative} = \{i : c_i < -0.2\}Negative={i:ci​<−0.2}
-```
-
-### 5.6. Attention Mechanism
-
-```math
-Multi-Head Self-Attention:
-Attention(Q,K,V)=softmax(QKTdk)V\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)VAttention(Q,K,V)=softmax(dk​​QKT​)V
-Multi-Head Output:
-MultiHead(Q,K,V)=Concat(head1,...,headh)WO\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^OMultiHead(Q,K,V)=Concat(head1​,...,headh​)WO
-Where:
-
-headi=Attention(QWiQ,KWiK,VWiV)\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)headi​=Attention(QWiQ​,KWiK​,VWiV​)
-For HuBERT:
-
-h=12h = 12
-h=12 attention heads
-
-dk=64d_k = 64
-dk​=64 (key dimension)
-
-dmodel=768d_{model} = 768
-dmodel​=768
-```
-
-### 5.7. Audio Feature Extraction
-
-```math
-Mel-Frequency Cepstral Coefficients (MFCCs)
-MFCCk=∑m=1Mlog⁡(Sm)cos⁡[k(m−0.5)πM]\text{MFCC}_k = \sum_{m=1}^{M} \log(S_m) \cos\left[k(m - 0.5)\frac{\pi}{M}\right]MFCCk​=m=1∑M​log(Sm​)cos[k(m−0.5)Mπ​]
-Where:
-
-SmS_m
-Sm​ = mel-scale power spectrum
-
-MM
-M = number of mel filters (typically 40)
-
-kk
-k = cepstral coefficient index (1-13)
-
-
-Jitter (Period Perturbation)
-Jitter=StdDev(ΔT)Mean(T)\text{Jitter} = \frac{\text{StdDev}(\Delta T)}{\text{Mean}(T)}Jitter=Mean(T)StdDev(ΔT)​
-Where:
-
-TT
-T = fundamental period
-
-ΔT\Delta T
-ΔT = period-to-period differences
-
-
-Shimmer (Amplitude Perturbation)
-Shimmer=StdDev(ΔA)Mean(A)\text{Shimmer} = \frac{\text{StdDev}(\Delta A)}{\text{Mean}(A)}Shimmer=Mean(A)StdDev(ΔA)​
-Where:
-
-AA
-A = peak amplitude
-
-ΔA\Delta A
-ΔA = amplitude differences
-```
----
-
-## 6. Component Specifications
-
-### 6.1. Audio Processing Pipeline
-
-```mermaid
-graph TB
-    Input[Raw Audio<br/>Any format] --> Validate{Valid Format?}
-    Validate -->|No| Error[Return Error]
-    Validate -->|Yes| Convert[FFmpeg Convert<br/>→ WAV 16kHz Mono]
-    
-    Convert --> Size{Size > 100MB?}
-    Size -->|Yes| Error
-    Size -->|No| Split[Silence-Based Splitting<br/>Min: 500ms silence<br/>Threshold: -40dB<br/>Keep: 300ms]
-    
-    Split --> Combine[Combine Short Chunks<br/>Target: 10s each]
-    Combine --> Chunks[Audio Chunks]
-    
-    Chunks --> Normalize["Normalize Amplitude<br/>Range: [-1, 1]"]
-    Normalize --> Resample[Ensure 16kHz]
-    Resample --> Ready[Ready for Inference]
-    
-    style Convert fill:#667eea,color:#fff
-    style Split fill:#51cf66,color:#fff
-    style Ready fill:#764ba2,color:#fff
-```
-
-#### **Parameters**:
-
-```python
-AUDIO_PROCESSING = {'sample_rate'         : 16000,              # Hz
-                    'channels'            : 1,                  # Mono
-                    'silence_threshold'   : -40,                # dBFS
-                    'min_silence_length'  : 500,                # ms
-                    'keep_silence'        : 300,                # ms
-                    'target_chunk_length' : 10000,              # ms (10 seconds)
-                    'max_file_size'       : 100 * 1024 * 1024,  # 100MB
-                   }
-```
-
-### 6.2. Emotion Prediction Pipeline
-
-```python
-class EmotionPipeline:
-    """
-    Complete emotion prediction pipeline
-    """
-    
-    def predict(self, audio_path: str) -> EmotionResult:
-        # Load and preprocess audio: O(n)
-        audio            = self.load_audio(audio_path)        
-        
-        # Extract features: O(n)
-        features         = self.extract_features(audio)    
-        
-        # HuBERT inference: O(T × d²)
-        logits           = self.model(features)              
-        
-        # Compute probabilities: O(C)
-        base_emotions    = softmax(logits)            
-        
-        # Granular mapping: O(C)
-        granular         = self.map_granular(base_emotions)  
-        
-        # Complex detection: O(C²)
-        complex_emotions = self.detect_complex(base_emotions)  
-        
-        return EmotionResult(base     = base_emotions,
-                             granular = granular,
-                             complex  = complex_emotions,
-                            )
-```
-
-#### **Time Complexity**:
-
-- Audio loading: O(n) where n = audio length
-- Feature extraction: O(n)
-- Model inference: O(T × d²) where T = sequence length, d = hidden dim
-- Post-processing: O(C²) where C = number of classes (6)
-- Total: O(n + T × d²)
-
-### 6.3. Explainability Generation
-
-```python
-class ExplainabilityPipeline:
-    """
-    Generate all explainability visualizations
-    """
-    
-    def generate_all(self, audio_path: str, emotions: Dict) -> Paths:
-        # Extract acoustic features: O(n)
-        features    = self.feature_extractor.extract(audio_path)  
-        
-        # Compute SHAP values: O(f × C)
-        shap_values = self.compute_shap(features, emotions)       
-        
-        # Compute LIME explanations: O(s × m)
-        lime_data   = self.compute_lime(audio_path, emotions)    
-        
-        # Extract attention weights: O(T × L × H)
-        attention   = self.extract_attention(audio_path)         
-        
-        # Generate visualizations
-        paths       = {'emotion_dist' : self.plot_emotions(emotions),
-                       'shap'         : self.plot_shap(shap_values),
-                       'lime'         : self.plot_lime(lime_data),
-                       'attention'    : self.plot_attention(attention),
-                      }
-        
-        return paths
-```
-
-#### **Time Complexity**:
-
-- Feature extraction: O(n)
-- SHAP computation: O(f × C) where f = features, C = classes
-- LIME computation: O(s × m) where s = segments, m = model calls
-- Attention extraction: O(T × L × H) where L = layers, H = heads
-- Visualization: O(f + s + L)
-- Total: O(n + s × m + T × L × H)
+**Design Pattern:** Singleton (via `get_audio_analyzer()`)
 
 ---
 
-## 7. API Architecture
+### 2. Emotion Predictor (`services/emotion_predictor.py`)
 
-### 7.1. REST API Endpoints
+**Responsibility:** HuBERT-based emotion classification
 
-```mermaid
-graph TB
-    subgraph "Public Endpoints"
-        Health[GET /api/v1/health<br/>Health check]
-        Upload[POST /api/v1/upload<br/>Upload audio file]
-    end
-    
-    subgraph "Analysis Endpoints"
-        Analyze[POST /api/v1/analyze<br/>Queue analysis task]
-        Status[GET /api/v1/status/:task_id<br/>Check task status]
-    end
-    
-    subgraph "Explainability Endpoints"
-        Explain[GET /api/v1/explain/:analysis_id<br/>Get explanation data]
-    end
-    
-    subgraph "Export Endpoints"
-        Export[POST /api/v1/export<br/>Export results]
-        Download[GET /api/v1/download/:filename<br/>Download exported file]
-    end
-    
-    subgraph "Benchmark Endpoints"
-        Benchmark[POST /api/v1/benchmark<br/>Run benchmark]
-    end
-    
-    style Health fill:#51cf66
-    style Analyze fill:#667eea,color:#fff
-    style Explain fill:#764ba2,color:#fff
+**Architecture:**
+
+```
+HubertForSpeechClassification
+├── HubertModel (facebook/hubert-base-ls960)
+│   ├── Feature Extractor: 7 CNN layers
+│   ├── Encoder: 12 Transformer layers
+│   │   ├── Hidden size: 768
+│   │   ├── Attention heads: 12
+│   │   └── Intermediate size: 3072
+│   └── Pooling: Mean over sequence length
+└── Classification Head
+    ├── Dense(768 → 768) + Tanh
+    ├── Dropout(0.1)
+    └── Output(768 → 6)
 ```
 
-### 7.2. API Request/Response Schemas
+**Key Methods:**
+- `predict_base_emotions()`: Returns 6 base emotion probabilities
+- `predict_granular_emotions()`: Maps to 20+ granular emotions
+- `get_attention_weights()`: Extracts attention for explainability
 
-#### 7.2.1
+---
 
-- `POST /api/v1/analyze`
+### 3. Transcriber (`services/transcriber.py`)
 
-- `Request`:
-```python
-{
-  "filepath": "/path/to/audio.wav",
-  "emotion_mode": "both",
-  "language": "en",
-  "export_format": "json"
-}
+**Responsibility:** Multilingual speech-to-text via Whisper
+
+**Model:** Whisper Large-v3 (1550M parameters)
+
+**Key Methods:**
+- `transcribe()`: Full-quality transcription (beam_size=5)
+- `transcribe_streaming()`: Fast transcription (beam_size=1)
+
+**Configuration:**
+- Sample rate: 16kHz
+- Task: Transcribe (not translate)
+- Language: Auto-detect or specified
+- Beam search: 5 (batch) / 1 (streaming)
+
+---
+
+### 4. Explainability Service (`services/explainer.py`)
+
+**Responsibility:** Generate SHAP, LIME, and attention visualizations
+
+**Key Methods:**
+- `compute_shap_values()`: Feature importance via SHAP-like analysis
+- `compute_lime_explanations()`: Local segment contributions
+- `generate_attention_visualization()`: Attention heatmaps
+- `generate_emotion_distribution()`: Emotion probability charts
+
+**Design:** Uses matplotlib/seaborn for publication-quality visualizations
+
+---
+
+### 5. Feature Extractor (`services/feature_extractor.py`)
+
+**Responsibility:** Extract acoustic features for explainability
+
+**Features Extracted:**
+
+| Feature | Description | Use Case |
+|---------|-------------|----------|
+| Pitch Variance | Voice pitch variability | Distinguishes arousal (excitement vs. calm) |
+| Energy (RMS) | Signal amplitude | Indicates vocal intensity |
+| Speaking Rate | Tempo estimation | Fast (excitement) vs. slow (sadness) |
+| Spectral Centroid | Frequency center of mass | Voice quality, brightness |
+| Zero Crossing Rate | Sign changes per second | Voicing vs. unvoiced sounds |
+| MFCCs (13) | Mel-frequency cepstral coefficients | Timbre, phonetic content |
+| Jitter | Period perturbation | Voice quality, stress |
+| Shimmer | Amplitude perturbation | Voice quality, emotion |
+| Formant Ratio | F1/F2 ratio approximation | Vowel space, emotion |
+
+---
+
+## Data Flow
+
+### 1. Audio Processing Pipeline
+
 ```
-- `Response`:
-```python
-{
-  "analysis_id": "ca045b0a-1344-46fe-ad2c-c37c79ef",
-  "status": "pending",
-  "task_id": "a7f8b3c2-9d4e-11eb-a8b3-0242ac130003",
-  "status_url": "/api/v1/status/a7f8b3c2-9d4e-11eb-a8b3-0242ac130003",
-  "created_at": "2025-12-07T10:30:00Z"
-}
-```
-
-#### 7.2.2
-
-- `GET /api/v1/status/:task_id`
-
-- Response (200 OK - Processing):
-
-```json{
-  "status": "processing",
-  "progress": 45,
-  "message": "Analyzing segment 3/8..."
-}
-```
-
-- Response (200 OK - Complete):
-
-```json{
-  "status": "completed",
-  "progress": 100,
-  "message": "Analysis complete",
-  "result": {
-    "transcription": {
-      "text": "Hello world",
-      "language": "English",
-      "language_code": "en",
-      "confidence": 0.98
-    },
-    "emotions": {
-      "base": [
-        {"label": "Happiness", "score": 0.72, "percentage": "72.00%"},
-        {"label": "Neutral", "score": 0.15, "percentage": "15.00%"}
-      ],
-      "primary": {
-        "emotions": ["Joy", "Delight", "Enthusiasm"],
-        "confidence": "72.00%"
-      },
-      "secondary": null,
-      "complex": []
-    },
-    "metadata": {
-      "analysis_id": "ca045b0a-1344-46fe-ad2c-c37c79ef",
-      "processing_time": 1.45
-    }
-  }
-}
-```
-
-### 7.3. WebSocket Events
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Server
-    
-    Client->>Server: connect()
-    Server-->>Client: connection_response {status: 'connected'}
-    
-    Client->>Server: analyze_batch {filepath, emotion_mode}
-    Server-->>Client: status {message, progress: 10}
-    Server-->>Client: chunk_result {chunk_index, result}
-    Server-->>Client: chunk_result {chunk_index, result}
-    Server-->>Client: analysis_complete {message}
-    
-    Client->>Server: streaming_chunk {audio_data, chunk_index}
-    Server-->>Client: streaming_result {chunk_index, result}
-    
-    Client->>Server: save_recording {recording_data}
-    Server-->>Client: save_complete {filepath}
-    
-    Client->>Server: disconnect
+Raw Audio (any format)
+    ↓
+[FFmpeg Conversion] → WAV, 16kHz, Mono, PCM_S16LE
+    ↓
+[torchaudio Load] → PyTorch Tensor
+    ↓
+[Resampling] → Ensure 16kHz
+    ↓
+[Mono Conversion] → Average channels if stereo
+    ↓
+[Normalization] → Scale to [-1, 1]
+    ↓
+Ready for Model Input
 ```
 
+### 2. Emotion Recognition Pipeline
 
+```
+Audio Tensor (16kHz mono)
+    ↓
+[Wav2Vec2 Feature Extractor] → Padding, Normalization
+    ↓
+[HuBERT CNN Feature Extractor] → 7 layers, stride [5,2,2,2,2,2,2]
+    ↓
+[HuBERT Transformer Encoder] → 12 layers, 768-dim, 12 heads
+    ↓
+[Mean Pooling] → Average over sequence length
+    ↓
+[Classification Head] → Dense(768→768) + Tanh + Dropout + Dense(768→6)
+    ↓
+[Softmax] → Probabilities for 6 emotions
+    ↓
+[Granular Mapping] → Apply thresholds, map to 20+ emotions
+    ↓
+[Complex Detection] → Detect emotion combinations (Elation, etc.)
+    ↓
+Final Emotion Result
+```
 
+### 3. Explainability Pipeline
 
+```
+Audio + Emotion Scores
+    ↓
+[Feature Extraction] → 10 acoustic features
+    ↓
+[SHAP Computation]
+    ├── Normalize features → [0, 1]
+    ├── Weight by dominant emotion score
+    ├── Apply emotion-specific feature weights
+    └── Normalize to sum=1
+    ↓
+[LIME Computation]
+    ├── Split audio into N segments
+    ├── Extract segment features (energy, pitch, ZCR)
+    ├── Compute contribution per segment
+    └── Identify positive/negative contributors
+    ↓
+[Attention Extraction]
+    ├── Forward pass with output_attentions=True
+    ├── Extract attention weights from layers
+    └── Average over attention heads
+    ↓
+[Visualization Generation]
+    ├── Emotion distribution bar chart
+    ├── SHAP importance bar chart
+    ├── LIME contribution bar chart
+    └── Attention heatmaps (multiple layers)
+    ↓
+PNG Images Saved to exports/visualizations/
+```
+
+---
+
+## AI Models & Mathematics
+
+### HuBERT (Hidden-Unit BERT)
+
+**Paper:** [HuBERT: Self-Supervised Speech Representation Learning by Masked Prediction of Hidden Units](https://arxiv.org/abs/2106.07447)
+
+**Architecture:**
+
+The model consists of a CNN feature extractor followed by a BERT-like Transformer encoder.
+
+#### 1. CNN Feature Extractor
+
+Processes raw waveform to extract acoustic features:
+
+$$
+\begin{align}
+\text{Conv}_i: \mathbb{R}^{L_{i-1}} &\to \mathbb{R}^{L_i} \\
+L_i &= \frac{L_{i-1} - k_i}{s_i} + 1
+\end{align}
+$$
+
+Where:
+- $L_i$ = sequence length at layer $i$
+- $k_i$ = kernel size
+- $s_i$ = stride
+
+**EmotiVoice Configuration:**
+- 7 CNN layers
+- Strides: [5, 2, 2, 2, 2, 2, 2]
+- Output: 768-dimensional features
+
+#### 2. Transformer Encoder
+
+Applies self-attention to capture contextual information:
+
+$$
+\begin{align}
+\text{Attention}(Q, K, V) &= \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V \\
+\text{MultiHead}(Q, K, V) &= \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O \\
+\text{where } \text{head}_i &= \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)
+\end{align}
+$$
+
+**EmotiVoice Configuration:**
+- 12 Transformer layers
+- Hidden size: $d_{model} = 768$
+- Attention heads: $h = 12$
+- $d_k = d_v = d_{model} / h = 64$
+- Feed-forward size: $d_{ff} = 3072$
+
+#### 3. Pooling Strategy
+
+Mean pooling over sequence length:
+
+$$
+\mathbf{h}_{\text{pooled}} = \frac{1}{T} \sum_{t=1}^{T} \mathbf{h}_t
+$$
+
+Where $T$ is the sequence length and $\mathbf{h}_t \in \mathbb{R}^{768}$.
+
+#### 4. Classification Head
+
+$$
+\begin{align}
+\mathbf{z} &= \tanh(W_1 \mathbf{h}_{\text{pooled}} + b_1) \\
+\mathbf{z}' &= \text{Dropout}(\mathbf{z}, p=0.1) \\
+\mathbf{logits} &= W_2 \mathbf{z}' + b_2 \\
+\mathbf{p} &= \text{softmax}(\mathbf{logits})
+\end{align}
+$$
+
+Where:
+- $W_1 \in \mathbb{R}^{768 \times 768}$, $b_1 \in \mathbb{R}^{768}$
+- $W_2 \in \mathbb{R}^{6 \times 768}$, $b_2 \in \mathbb{R}^{6}$
+- $\mathbf{p} \in \mathbb{R}^6$ (probability distribution over 6 emotions)
+
+#### 5. Loss Function
+
+Cross-entropy loss for single-label classification:
+
+$$
+\mathcal{L} = -\sum_{i=1}^{6} y_i \log(p_i)
+$$
+
+Where $\mathbf{y}$ is the one-hot encoded ground truth.
+
+---
+
+### Whisper
+
+**Paper:** [Robust Speech Recognition via Large-Scale Weak Supervision](https://arxiv.org/abs/2212.04356)
+
+**Architecture:** Encoder-Decoder Transformer
+
+#### 1. Encoder
+
+Processes log-mel spectrogram:
+
+$$
+\begin{align}
+X_{\text{mel}} &= \text{log-mel-spectrogram}(\text{audio}) \\
+X_{\text{mel}} &\in \mathbb{R}^{80 \times T}
+\end{align}
+$$
+
+Where:
+- 80 mel-frequency bins
+- $T$ = time steps (30 seconds → 3000 frames at 10ms stride)
+
+**Whisper Large-v3:**
+- 32 encoder layers
+- Hidden size: 1280
+- Attention heads: 20
+- Parameters: ~1550M
+
+#### 2. Decoder
+
+Auto-regressive generation with beam search:
+
+$$
+\begin{align}
+P(w_t | w_{<t}, X) &= \text{softmax}(W_{\text{vocab}} h_t) \\
+w_t^* &= \underset{w_t}{\arg\max} \, P(w_t | w_{<t}, X)
+\end{align}
+$$
+
+**EmotiVoice Configuration:**
+- Beam size: 5 (batch) / 1 (streaming)
+- Temperature: 0.0 (deterministic)
+- Language: Auto-detect or specified
+
+---
+
+### Granular Emotion Mapping
+
+**Algorithm:**
+
+```
+Input: Base emotion probabilities p = [p₁, p₂, ..., p₆]
+Output: Granular emotions (primary, secondary)
+
+1. dominant_emotion = argmax(p)
+2. dominant_score = p[dominant_emotion]
+
+3. IF dominant_score ≥ threshold_emotion:
+     primary_emotions = GRANULAR_MAP[dominant_emotion]["primary"]
+     
+4. IF 0.3 ≤ dominant_score < 0.7:
+     secondary_emotions = GRANULAR_MAP[dominant_emotion]["secondary"]
+     secondary_confidence = dominant_score × 0.7
+     
+5. RETURN (primary_emotions, secondary_emotions)
+```
+
+**Thresholds:**
+- Anger, Fear, Happiness, Sadness, Surprise: 0.3
+- Neutral: 0.4 (higher threshold for neutral)
+
+---
+
+### Complex Emotion Detection
+
+**Algorithm:**
+
+```
+Input: Base emotion probabilities p = [p₁, p₂, ..., p₆]
+Output: Complex emotions
+
+1. sorted_emotions = sort(p, descending=True)
+2. top_two = (sorted_emotions[0], sorted_emotions[1])
+
+3. FOR each (emotion_pair, complex_name) in COMPLEX_EMOTIONS:
+     IF set(top_two) == set(emotion_pair):
+         avg_score = (top_two[0].score + top_two[1].score) / 2
+         
+         IF avg_score > 0.3:
+             RETURN complex_name with confidence = avg_score
+             
+4. RETURN []
+```
+
+**Complex Emotion Mappings:**
+- (Happiness, Surprise) → Elation
+- (Sadness, Anger) → Bitterness
+- (Fear, Sadness) → Desperation
+- (Happiness, Neutral) → Contentment
+- (Anger, Fear) → Panic
+- (Sadness, Neutral) → Resignation
+
+---
+
+### SHAP-like Feature Importance
+
+**Algorithm:**
+
+```
+Input: Audio features f = [f₁, f₂, ..., f₁₀], Emotion scores p
+Output: SHAP values s = [s₁, s₂, ..., s₁₀]
+
+1. dominant_emotion = argmax(p)
+2. dominant_score = p[dominant_emotion]
+
+3. FOR each feature fᵢ:
+     normalized_fᵢ = clip(fᵢ, 0, 1)
+     importance_i = normalized_fᵢ × dominant_score
+     weight_i = EMOTION_FEATURE_WEIGHT[dominant_emotion][feature_i]
+     importance_i = importance_i × weight_i
+     
+4. Normalize: s = importance / sum(importance)
+
+5. RETURN s (sorted by importance)
+```
+
+**Emotion-Feature Weight Matrix:**
+
+| Emotion | Pitch Variance | Energy | Speaking Rate | Spectral Centroid |
+|---------|----------------|--------|---------------|-------------------|
+| Happiness | 1.2 | 1.3 | 1.1 | 1.0 |
+| Anger | 1.3 | 1.4 | 1.1 | 1.0 |
+| Sadness | 0.6 | 0.7 | 0.8 | 0.9 |
+| Fear | 1.3 | 1.0 | 1.0 | 1.0 |
+| Surprise | 1.4 | 1.2 | 1.0 | 1.0 |
+| Neutral | 0.8 | 0.9 | 1.0 | 1.0 |
+
+---
+
+### LIME-like Local Explanations
+
+**Algorithm:**
+
+```
+Input: Audio waveform x, Dominant emotion e
+Output: Segment contributions c = [c₁, c₂, ..., cₙ]
+
+1. n_segments = min(20, max(5, duration_seconds))
+2. segments = split_audio(x, n_segments)
+
+3. FOR each segment xᵢ:
+     energy_i = sqrt(mean(xᵢ²))
+     zcr_i = mean(zero_crossing_rate(xᵢ))
+     pitch_var_i = var(xᵢ)
+     
+     IF e in ["Happiness", "Surprise"]:
+         contribution_i = (energy_i × 2.0) + (pitch_var_i × 0.5) - 0.5
+     
+     ELSE IF e == "Sadness":
+         contribution_i = (1.0 - energy_i) × 1.5 - 0.5
+     
+     ELSE IF e == "Anger":
+         contribution_i = (energy_i × 2.5) + (pitch_var_i × 0.8) - 0.6
+     
+     ELSE IF e == "Fear":
+         contribution_i = (pitch_var_i × 1.5) + (zcr_i × 1.0) - 0.5
+     
+     ELSE:  # Neutral
+         contribution_i = (energy_i × 0.5) - 0.3
+     
+     c_i = clip(contribution_i, -1.0, 1.0)
+
+4. positive_segments = {i | c_i > 0.2}
+5. negative_segments = {i | c_i < -0.2}
+
+6. RETURN (c, positive_segments, negative_segments)
+```
+
+---
+
+## Processing Pipeline
+
+### Batch Analysis Pipeline
+
+```
+1. File Upload
+   ├── Validate file type and size
+   ├── Generate unique filename (UUID)
+   └── Save to data/uploaded_files/
+
+2. Analysis Request
+   ├── Validate filepath exists
+   ├── Create analysis_id (UUID)
+   ├── Queue Celery task
+   └── Return 202 Accepted with task_id
+
+3. Celery Worker Execution
+   ├── Convert audio to WAV (FFmpeg)
+   ├── Split on silence → N chunks
+   └── FOR each chunk:
+        ├── Load as tensor
+        ├── HuBERT emotion prediction
+        ├── Whisper transcription
+        ├── Map to granular emotions
+        ├── Detect complex emotions
+        ├── Generate SHAP values
+        ├── Generate LIME explanations
+        ├── Generate attention heatmaps
+        ├── Generate emotion distribution
+        └── Store visualizations
+
+4. Result Formatting
+   ├── Format emotions (raw → percentages)
+   ├── Compile metadata (processing_time, analysis_id)
+   └── Return complete result
+
+5. Client Polling
+   ├── GET /status/{task_id}
+   ├── Check task state (PENDING → PROCESSING → SUCCESS)
+   └── Return result when complete
+```
+
+### Streaming Pipeline
+
+```
+1. Client Initialization
+   ├── Request microphone access
+   ├── Initialize RecordRTC
+   └── Connect WebSocket
+
+2. Recording Loop (every 10 seconds)
+   ├── Capture audio chunk (WebM)
+   ├── Emit 'streaming_chunk' event
+   └── Server receives chunk
+
+3. Server Processing
+   ├── Save chunk to temp file
+   ├── Convert to WAV (fast FFmpeg)
+   ├── Load as tensor
+   ├── HuBERT prediction (base emotions only)
+   ├── Whisper transcription (beam_size=1)
+   ├── Generate explainability (SHAP/LIME/Attention)
+   └── Emit 'streaming_result' event
+
+4. Client Updates
+   ├── Receive result
+   ├── Update UI in real-time
+   ├── Display transcription
+   └── Show emotion scores
+
+5. Recording Stop
+   ├── Stop media tracks
+   ├── Emit 'save_recording' event
+   ├── Server merges all chunks
+   └── Save complete recording
+```
+
+---
+
+## Technology Stack
+
+### Backend
+
+| Component | Technology | Version | Purpose |
+|-----------|-----------|---------|---------|
+| Web Framework | Flask | 3.0.0 | REST API, routing |
+| WebSocket | Flask-SocketIO | 5.3.5 | Real-time communication |
+| Task Queue | Celery | 5.3.4 | Async processing |
+| Message Broker | Redis | 5.0.1 | Celery backend |
+| Validation | Pydantic | 2.5.0 | Data validation |
+
+### AI/ML
+
+| Component | Technology | Version | Purpose |
+|-----------|-----------|---------|---------|
+| Deep Learning | PyTorch | Latest | Model inference |
+| Audio Processing | torchaudio | Latest | Tensor operations |
+| Transformers | transformers | 4.36.0 | HuBERT model |
+| ASR | openai-whisper | 20231117 | Transcription |
+| Explainability | SHAP | 0.43.0 | Feature importance |
+| Explainability | LIME | 0.2.0.1 | Local explanations |
+
+### Audio Processing
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Conversion | FFmpeg | Format conversion |
+| Manipulation | pydub | Silence splitting |
+| Features | librosa | Acoustic features |
+| I/O | scipy | WAV read/write |
+
+### Visualization
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Plotting | matplotlib | Charts |
+| Heatmaps | seaborn | Attention viz |
+
+### Deployment
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Containerization | Docker | Deployment |
+| Environment | python:3.10-slim | Base image |
+| Models | HuggingFace Hub | Model storage |
+
+---
+
+## Performance Considerations
+
+### Model Inference Times (CPU)
+
+- **HuBERT (10s audio):** ~1.5-2.0 seconds
+- **Whisper Large-v3 (10s audio):** ~3-5 seconds
+- **Total per chunk:** ~5-7 seconds
+
+### Optimization Strategies
+
+1. **Batch Processing:** Process multiple chunks in parallel with ThreadPoolExecutor
+2. **Streaming Mode:** Use beam_size=1 for Whisper (3x faster)
+3. **Model Caching:** Singleton pattern prevents reloading
+4. **GPU Support:** Configurable via DEVICE environment variable
+5. **Audio Chunking:** Split long files to enable parallel processing
+
+---
+
+## Security Considerations
+
+1. **Input Validation:** Pydantic models enforce strict schemas
+2. **File Upload:** 100MB limit, allowed extensions only
+3. **Path Traversal:** Normalized paths, directory checks
+4. **Resource Limits:** Task time limits (10 min), worker task limits
+5. **Error Handling:** No sensitive info in error messages
+
+---
+
+## Scalability
+
+### Horizontal Scaling
+
+- **Celery Workers:** Add more workers for increased throughput
+- **Redis:** Use Redis Cluster for high availability
+- **Load Balancer:** Nginx/HAProxy for multiple Flask instances
+
+### Vertical Scaling
+
+- **GPU:** Set DEVICE=cuda for 5-10x speedup
+- **Model Quantization:** Reduce precision for faster inference
+- **Batch Size:** Increase for higher throughput
+
+---
+
+**For implementation details, see the codebase and API documentation.**
