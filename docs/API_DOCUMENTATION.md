@@ -1,6 +1,7 @@
-# 🔌 EmotiVoice API Documentation
+# EmotiVoice API Documentation
 
-Complete REST API and WebSocket documentation for programmatic access.
+**Version:** 1.0.0  
+**Base URL:** `/api/v1`
 
 ---
 
@@ -8,167 +9,144 @@ Complete REST API and WebSocket documentation for programmatic access.
 
 1. [Overview](#overview)
 2. [Authentication](#authentication)
-3. [REST API Endpoints](#rest-api-endpoints)
-4. [WebSocket Events](#websocket-events)
-5. [Data Models](#data-models)
-6. [Code Examples](#code-examples)
-7. [Rate Limits](#rate-limits)
-8. [Error Handling](#error-handling)
+3. [Error Handling](#error-handling)
+4. [Endpoints](#endpoints)
+   - [Health & Status](#health--status)
+   - [File Upload](#file-upload)
+   - [Audio Analysis](#audio-analysis)
+   - [Explainability](#explainability)
+   - [Visualizations](#visualizations)
+   - [Export](#export)
+5. [WebSocket Events](#websocket-events)
+6. [Data Models](#data-models)
 
 ---
 
 ## Overview
 
-### Base URL
-```
-http://localhost:2024
-```
+The EmotiVoice API provides comprehensive speech emotion recognition and transcription capabilities powered by HuBERT and Whisper AI models. The API supports both synchronous and asynchronous processing modes.
 
-### Supported Formats
-- **Request**: `multipart/form-data`, `application/json`
-- **Response**: `application/json`
-- **WebSocket**: Socket.IO protocol
+### Key Features
 
-### API Version
-```
-Version: 1.0
-```
+- **6 Base Emotions:** Anger, Fear, Happiness, Neutral, Sadness, Surprise
+- **20+ Granular Emotions:** Detailed emotional states mapped from base emotions
+- **Complex Emotion Detection:** Elation, Bitterness, Desperation, etc.
+- **Multi-language Transcription:** 90+ languages supported via Whisper
+- **Explainable AI:** SHAP values, LIME explanations, attention visualizations
+- **Real-time Processing:** WebSocket support for streaming analysis
+
+### Rate Limits
+
+- **Default:** 100 requests per hour per IP
+- **File Size Limit:** 100MB per upload
+- **Supported Formats:** WAV, MP3, M4A, FLAC, OGG, WEBM
 
 ---
 
 ## Authentication
 
-Currently, the API operates without authentication for local development. For production:
-
-```python
-# Future implementation
-headers = {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-}
-```
+Currently, the API does not require authentication. All endpoints are publicly accessible.
 
 ---
 
-## REST API Endpoints
+## Error Handling
 
-### 1. Health Check
+### Error Response Format
 
-**Endpoint:** `GET /health`
+```json
+{
+  "status": "error",
+  "message": "Human-readable error message",
+  "details": [
+    {
+      "field": "field_name",
+      "message": "Detailed error description",
+      "error_type": "ValidationError"
+    }
+  ],
+  "timestamp": "2025-01-08T12:34:56.789Z"
+}
+```
 
-**Description:** Check API health status
+### HTTP Status Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | Success |
+| 202 | Accepted (async processing) |
+| 400 | Bad Request (validation error) |
+| 404 | Resource Not Found |
+| 422 | Unprocessable Entity (audio processing error) |
+| 500 | Internal Server Error |
+| 503 | Service Unavailable (models not loaded) |
+
+---
+
+## Endpoints
+
+### Health & Status
+
+#### `GET /api/v1/health`
+
+Check service health and model status.
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
-  "version": "1.0",
-  "models": {
-    "hubert": "loaded",
-    "whisper": "loaded"
-  },
-  "uptime": 3600
+  "version": "1.0.0",
+  "models_loaded": true,
+  "redis_connected": true,
+  "timestamp": "2025-01-08T12:34:56.789Z"
 }
 ```
+
+**Status Codes:**
+- `200`: Service healthy
+- `503`: Service unhealthy
 
 ---
 
-### 2. Upload Audio File
+#### `GET /api/v1/status/{task_id}`
 
-**Endpoint:** `POST /upload`
-
-**Description:** Upload an audio file for batch processing
-
-**Content-Type:** `multipart/form-data`
+Get status of an asynchronous analysis task.
 
 **Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| file | File | Yes | Audio file (WAV, MP3, M4A, etc.) |
+- `task_id` (path): UUID of the task
 
-**Example Request:**
-```bash
-curl -X POST http://localhost:2024/upload \
-  -F "file=@recording.wav"
-```
+**Response (Processing):**
 
-**Success Response (200):**
 ```json
 {
-  "success": true,
-  "filepath": "/path/to/uploaded/file.wav",
-  "filename": "recording_abc123.wav"
+  "status": "processing",
+  "progress": 45,
+  "message": "Analyzing audio..."
 }
 ```
 
-**Error Response (400):**
+**Response (Completed):**
+
 ```json
 {
-  "error": "Invalid file type"
-}
-```
-
----
-
-### 3. Analyze Audio (Synchronous)
-
-**Endpoint:** `POST /analyze`
-
-**Description:** Analyze uploaded audio file synchronously
-
-**Content-Type:** `application/json`
-
-**Request Body:**
-```json
-{
-  "filepath": "/path/to/audio.wav",
-  "emotion_mode": "both",
-  "include_timestamps": false
-}
-```
-
-**Parameters:**
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| filepath | string | Yes | - | Path to uploaded file |
-| emotion_mode | string | No | "both" | "base", "granular", or "both" |
-| include_timestamps | boolean | No | false | Include word-level timestamps |
-
-**Success Response (200):**
-```json
-{
-  "status": "success",
-  "transcription": {
-    "text": "Hello, how are you doing today?",
+  "status": "completed",
+  "progress": 100,
+  "message": "Task completed",
+  "result": {
+    "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+    "transcription": "This is the transcribed text",
     "language": "English",
-    "language_code": "en",
-    "duration": 3.5
-  },
-  "emotions": {
-    "base": [
-      {"label": "Neutral", "score": "85.23%"},
-      {"label": "Happiness", "score": "10.45%"},
-      {"label": "Sadness", "score": "2.15%"},
-      {"label": "Anger", "score": "1.23%"},
-      {"label": "Fear", "score": "0.52%"},
-      {"label": "Surprise", "score": "0.42%"}
-    ],
-    "primary": {
-      "emotions": ["Neutral", "Calm"],
-      "confidence": "85.23%"
+    "emotions": {
+      "base": [
+        {
+          "label": "Happiness",
+          "score": 75.32,
+          "percentage": "75.32%"
+        }
+      ]
     },
-    "secondary": {
-      "emotions": ["Indifference", "Composure"],
-      "confidence": "59.66%"
-    },
-    "complex": []
-  },
-  "metadata": {
-    "processing_time": 1.23,
-    "audio_duration": 3.5,
-    "model_versions": {
-      "hubert": "base-ls960",
-      "whisper": "large-v3"
+    "metadata": {
+      "processing_time": 2.45
     }
   }
 }
@@ -176,57 +154,238 @@ curl -X POST http://localhost:2024/upload \
 
 ---
 
-### 4. Get Emotion Models Info
+### File Upload
 
-**Endpoint:** `GET /models/emotions`
+#### `POST /api/v1/upload`
 
-**Description:** Get information about available emotion models
+Upload an audio file for analysis.
 
-**Success Response (200):**
+**Content-Type:** `multipart/form-data`
+
+**Parameters:**
+- `file` (form-data): Audio file (required)
+
+**Request Example:**
+
+```bash
+curl -X POST http://localhost:8000/api/v1/upload \
+  -F "file=@audio.wav"
+```
+
+**Response:**
+
 ```json
 {
-  "base_emotions": ["Anger", "Fear", "Happiness", "Neutral", "Sadness", "Surprise"],
-  "granular_emotions": {
-    "Anger": ["Rage", "Fury", "Frustration", "Irritation", "Annoyance", "Resentment"],
-    "Fear": ["Terror", "Panic", "Anxiety", "Worry", "Nervousness", "Dread"],
-    "Happiness": ["Joy", "Delight", "Contentment", "Amusement", "Excitement", "Enthusiasm"],
-    "Neutral": ["Calm", "Indifference", "Composure", "Serenity"],
-    "Sadness": ["Grief", "Sorrow", "Melancholy", "Disappointment", "Despair", "Loneliness"],
-    "Surprise": ["Amazement", "Shock", "Wonder", "Astonishment", "Disbelief"]
+  "success": true,
+  "filepath": "/app/data/uploaded_files/audio_a1b2c3d4.wav",
+  "filename": "audio_a1b2c3d4.wav"
+}
+```
+
+**Status Codes:**
+- `200`: Upload successful
+- `400`: No file provided or invalid file type
+- `500`: Upload failed
+
+---
+
+### Audio Analysis
+
+#### `POST /api/v1/analyze`
+
+Analyze a single audio file (asynchronous).
+
+**Content-Type:** `application/json`
+
+**Request Body:**
+
+```json
+{
+  "filepath": "/app/data/uploaded_files/audio.wav",
+  "emotion_mode": "both",
+  "language": null
+}
+```
+
+**Parameters:**
+- `filepath` (string, required): Path to uploaded audio file
+- `emotion_mode` (string, optional): `"base"`, `"granular"`, or `"both"` (default: `"both"`)
+- `language` (string, optional): Target language code (e.g., `"en"`, `"es"`) or `null` for auto-detect
+
+**Response:**
+
+```json
+{
+  "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "created_at": "2025-01-08T12:34:56.789Z",
+  "task_id": "celery-task-uuid",
+  "status_url": "/api/v1/status/celery-task-uuid"
+}
+```
+
+**Status Codes:**
+- `202`: Analysis queued
+- `400`: Invalid request
+- `404`: File not found
+
+---
+
+### Explainability
+
+#### `GET /api/v1/explain/{analysis_id}`
+
+Get explainability results for a completed analysis.
+
+**Parameters:**
+- `analysis_id` (path): UUID of the analysis
+
+**Response:**
+
+```json
+{
+  "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+  "available": true,
+  "visualization_urls": {
+    "emotion_distribution": "/api/v1/visualizations/550e8400.../emotion_distribution",
+    "shap_importance": "/api/v1/visualizations/550e8400.../shap_importance",
+    "lime_contributions": "/api/v1/visualizations/550e8400.../lime_contributions",
+    "attention": "/api/v1/visualizations/550e8400.../attention"
   },
-  "complex_emotions": [
-    "Elation",
-    "Bitterness",
-    "Desperation",
-    "Contentment",
-    "Panic",
-    "Resignation"
-  ]
+  "visualizations": {
+    "550e8400..._emotion_distribution": "/path/to/viz.png"
+  }
+}
+```
+
+**Status Codes:**
+- `200`: Explainability data available
+- `404`: Analysis not found
+
+---
+
+### Visualizations
+
+#### `GET /api/v1/visualizations/{analysis_id}`
+
+List all available visualizations for an analysis.
+
+**Parameters:**
+- `analysis_id` (path): UUID of the analysis
+
+**Response:**
+
+```json
+{
+  "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+  "visualizations": {
+    "emotion_distribution": {
+      "url": "/api/v1/visualizations/550e8400.../emotion_distribution",
+      "type": "emotion_distribution",
+      "filename": "550e8400..._emotion_distribution.png",
+      "layer_info": null
+    },
+    "shap_importance": {
+      "url": "/api/v1/visualizations/550e8400.../shap_importance",
+      "type": "shap_importance",
+      "filename": "550e8400..._shap_importance.png",
+      "layer_info": null
+    }
+  },
+  "count": 4
 }
 ```
 
 ---
 
-### 5. Get Supported Languages
+#### `GET /api/v1/visualizations/{analysis_id}/{viz_type}`
 
-**Endpoint:** `GET /languages`
+Get a specific visualization image.
 
-**Description:** Get list of supported languages for transcription
+**Parameters:**
+- `analysis_id` (path): UUID of the analysis
+- `viz_type` (path): Visualization type (`emotion_distribution`, `shap_importance`, `lime_contributions`, `attention`)
 
-**Success Response (200):**
+**Response:**
+- Content-Type: `image/png`
+- Returns PNG image data
+
+**Status Codes:**
+- `200`: Image returned
+- `404`: Visualization not found
+
+---
+
+#### `GET /api/v1/visualizations/{analysis_id}/all`
+
+Get all visualization URLs in a single request.
+
+**Response:**
+
 ```json
 {
-  "count": 99,
-  "languages": [
-    {"code": "en", "name": "English"},
-    {"code": "es", "name": "Spanish"},
-    {"code": "fr", "name": "French"},
-    {"code": "de", "name": "German"},
-    {"code": "zh", "name": "Chinese"},
-    ...
-  ]
+  "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+  "visualization_urls": {
+    "emotion_distribution": "/api/v1/visualizations/550e8400.../emotion_distribution",
+    "shap_importance": "/api/v1/visualizations/550e8400.../shap_importance",
+    "lime_contributions": "/api/v1/visualizations/550e8400.../lime_contributions",
+    "attention": "/api/v1/visualizations/550e8400.../attention"
+  },
+  "available_types": ["emotion_distribution", "shap_importance", "lime_contributions", "attention"]
 }
 ```
+
+---
+
+### Export
+
+#### `POST /api/v1/export`
+
+Export analysis results in various formats.
+
+**Content-Type:** `application/json`
+
+**Request Body:**
+
+```json
+{
+  "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+  "format": "json",
+  "result_data": {}
+}
+```
+
+**Parameters:**
+- `analysis_id` (string, required): UUID of the analysis
+- `format` (string, optional): `"json"`, `"csv"`, or `"pdf"` (default: `"json"`)
+- `result_data` (object, optional): Analysis result data to export
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "export_path": "/app/exports/550e8400....json",
+  "download_url": "/api/v1/download/550e8400....json"
+}
+```
+
+---
+
+#### `GET /api/v1/download/{filename}`
+
+Download an exported file.
+
+**Parameters:**
+- `filename` (path): Name of the exported file
+
+**Response:**
+- File download with appropriate content type
+
+**Status Codes:**
+- `200`: File download started
+- `403`: Access denied (directory traversal attempt)
+- `404`: File not found
 
 ---
 
@@ -234,487 +393,354 @@ curl -X POST http://localhost:2024/upload \
 
 ### Connection
 
-**Connect to WebSocket:**
 ```javascript
-const socket = io('http://localhost:2024');
+const socket = io('http://localhost:8000');
 
 socket.on('connect', () => {
-  console.log('Connected:', socket.id);
+  console.log('Connected to EmotiVoice');
 });
 ```
 
 ---
 
-### Event: `analyze_batch`
+### Batch Analysis
 
-**Description:** Start batch analysis of uploaded file
+#### Client → Server: `analyze_batch`
 
-**Emit:**
-```javascript
-socket.emit('analyze_batch', {
-  filepath: '/path/to/audio.wav',
-  emotion_mode: 'both'
-});
+Start batch analysis with automatic audio segmentation.
+
+**Payload:**
+
+```json
+{
+  "filepath": "/app/data/uploaded_files/audio.wav",
+  "emotion_mode": "both"
+}
 ```
 
-**Listen for Progress:**
-```javascript
-socket.on('status', (data) => {
-  console.log(data.message);  // "Analyzing segment 1/5..."
-  console.log(data.progress);  // 20
-});
+#### Server → Client: `status`
+
+Progress updates during analysis.
+
+**Payload:**
+
+```json
+{
+  "message": "Analyzing segment 3/10...",
+  "progress": 30
+}
 ```
 
-**Listen for Chunk Results:**
-```javascript
-socket.on('chunk_result', (data) => {
-  console.log('Chunk:', data.chunk_index);
-  console.log('Result:', data.result);
-});
+#### Server → Client: `chunk_result`
+
+Result for each audio segment.
+
+**Payload:**
+
+```json
+{
+  "chunk_index": 0,
+  "total_chunks": 10,
+  "result": {
+    "transcription": "This is segment text",
+    "language": "English",
+    "emotions": {
+      "base": [...]
+    },
+    "analysis_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
 ```
 
-**Listen for Completion:**
-```javascript
-socket.on('analysis_complete', (data) => {
-  console.log('Analysis finished:', data.message);
-});
-```
+#### Server → Client: `analysis_complete`
 
----
+All segments processed.
 
-### Event: `streaming_chunk`
+**Payload:**
 
-**Description:** Send audio chunk for real-time analysis
-
-**Emit:**
-```javascript
-socket.emit('streaming_chunk', {
-  audio_data: audioBlob,  // Blob or ArrayBuffer
-  chunk_index: 0
-});
-```
-
-**Listen for Results:**
-```javascript
-socket.on('streaming_result', (data) => {
-  console.log('Real-time result:', data.result);
-});
-```
-
----
-
-### Event: `save_recording`
-
-**Description:** Save complete recording after streaming
-
-**Emit:**
-```javascript
-socket.emit('save_recording', {
-  recording_data: fullRecordingBlob
-});
-```
-
-**Listen for Confirmation:**
-```javascript
-socket.on('save_complete', (data) => {
-  console.log('Saved at:', data.filepath);
-});
+```json
+{
+  "message": "Complete"
+}
 ```
 
 ---
 
-### Event: `error`
+### Live Streaming
 
-**Description:** Error notifications
+#### Client → Server: `streaming_chunk`
 
-**Listen:**
-```javascript
-socket.on('error', (data) => {
-  console.error('Error:', data.message);
-});
+Send real-time audio chunk for analysis.
+
+**Payload:**
+
+```json
+{
+  "audio_data": "<binary_data>",
+  "chunk_index": 0
+}
+```
+
+#### Server → Client: `streaming_result`
+
+Real-time analysis result.
+
+**Payload:**
+
+```json
+{
+  "chunk_index": 0,
+  "result": {
+    "transcription": "Real-time text",
+    "language": "English",
+    "emotions": {
+      "base": [...]
+    },
+    "analysis_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+#### Client → Server: `save_recording`
+
+Save complete recording after streaming session.
+
+**Payload:**
+
+```json
+{
+  "recording_data": "<binary_data>"
+}
+```
+
+#### Server → Client: `save_complete`
+
+Recording saved successfully.
+
+**Payload:**
+
+```json
+{
+  "filepath": "/app/data/recorded_files/recording_xyz.wav"
+}
+```
+
+---
+
+### Error Events
+
+#### Server → Client: `error`
+
+Error occurred during processing.
+
+**Payload:**
+
+```json
+{
+  "message": "Error description"
+}
+```
+
+#### Server → Client: `chunk_skipped`
+
+Audio chunk skipped due to processing error.
+
+**Payload:**
+
+```json
+{
+  "chunk_index": 5,
+  "reason": "conversion_failed"
+}
 ```
 
 ---
 
 ## Data Models
 
-### EmotionResult
+### EmotionScore
 
-```typescript
-interface EmotionResult {
-  base: Array<{
-    label: string;
-    score: string;  // Percentage format: "85.23%"
-  }>;
-  primary?: {
-    emotions: string[];
-    confidence: string;
-  };
-  secondary?: {
-    emotions: string[];
-    confidence: string;
-  };
-  complex?: Array<{
-    name: string;
-    components: string[];
-    confidence: string;
-  }>;
+```json
+{
+  "label": "Happiness",
+  "score": 75.32,
+  "percentage": "75.32%"
+}
+```
+
+### GranularEmotion
+
+```json
+{
+  "emotions": ["Joy", "Delight", "Happiness"],
+  "confidence": "75.32%"
+}
+```
+
+### ComplexEmotion
+
+```json
+{
+  "name": "Elation",
+  "components": ["Happiness", "Surprise"],
+  "confidence": "68.45%"
 }
 ```
 
 ### TranscriptionResult
 
-```typescript
-interface TranscriptionResult {
-  text: string;
-  language: string;
-  language_code: string;
-  duration?: number;
-  word_timestamps?: Array<{
-    word: string;
-    start: number;
-    end: number;
-  }>;
+```json
+{
+  "text": "Transcribed speech text",
+  "language": "English",
+  "language_code": "en",
+  "confidence": 0.95
+}
+```
+
+### EmotionResult
+
+```json
+{
+  "base": [
+    {
+      "label": "Happiness",
+      "score": 75.32,
+      "percentage": "75.32%"
+    }
+  ],
+  "primary": {
+    "emotions": ["Joy", "Delight"],
+    "confidence": "75.32%"
+  },
+  "secondary": {
+    "emotions": ["Contentment", "Amusement"],
+    "confidence": "52.73%"
+  },
+  "complex": [
+    {
+      "name": "Elation",
+      "components": ["Happiness", "Surprise"],
+      "confidence": "68.45%"
+    }
+  ]
 }
 ```
 
 ### AnalysisResult
 
-```typescript
-interface AnalysisResult {
-  status: 'success' | 'error';
-  transcription: TranscriptionResult;
-  emotions: EmotionResult;
-  metadata?: {
-    processing_time: number;
-    audio_duration: number;
-    model_versions: {
-      hubert: string;
-      whisper: string;
-    };
-  };
-  message?: string;  // For errors
+```json
+{
+  "transcription": {
+    "text": "Transcribed text",
+    "language": "English",
+    "language_code": "en"
+  },
+  "emotions": {
+    "base": [...],
+    "primary": {...},
+    "secondary": {...},
+    "complex": [...]
+  },
+  "metadata": {
+    "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+    "processing_time": 2.45,
+    "audio_path": "/app/data/uploaded_files/audio.wav"
+  },
+  "processing_time": 2.45
 }
 ```
 
 ---
 
-## Code Examples
+## Usage Examples
 
-### Python Client
+### Example 1: Single File Analysis
 
 ```python
 import requests
-from pathlib import Path
-
-class EmotiVoiceClient:
-    def __init__(self, base_url='http://localhost:2024'):
-        self.base_url = base_url
-    
-    def upload_file(self, file_path):
-        """Upload audio file"""
-        with open(file_path, 'rb') as f:
-            files = {'file': f}
-            response = requests.post(
-                f'{self.base_url}/upload',
-                files=files
-            )
-        return response.json()
-    
-    def analyze(self, filepath, emotion_mode='both'):
-        """Analyze audio file"""
-        data = {
-            'filepath': filepath,
-            'emotion_mode': emotion_mode
-        }
-        response = requests.post(
-            f'{self.base_url}/analyze',
-            json=data
-        )
-        return response.json()
-    
-    def analyze_file(self, file_path, emotion_mode='both'):
-        """Upload and analyze in one call"""
-        # Upload
-        upload_result = self.upload_file(file_path)
-        if not upload_result.get('success'):
-            raise Exception(f"Upload failed: {upload_result}")
-        
-        # Analyze
-        filepath = upload_result['filepath']
-        return self.analyze(filepath, emotion_mode)
-
-# Usage
-client = EmotiVoiceClient()
-result = client.analyze_file('recording.wav', emotion_mode='both')
-
-print("Transcription:", result['transcription']['text'])
-print("Dominant emotion:", result['emotions']['base'][0]['label'])
-```
-
-### JavaScript/Node.js Client
-
-```javascript
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
-
-class EmotiVoiceClient {
-  constructor(baseURL = 'http://localhost:2024') {
-    this.baseURL = baseURL;
-  }
-  
-  async uploadFile(filePath) {
-    const form = new FormData();
-    form.append('file', fs.createReadStream(filePath));
-    
-    const response = await axios.post(
-      `${this.baseURL}/upload`,
-      form,
-      { headers: form.getHeaders() }
-    );
-    
-    return response.data;
-  }
-  
-  async analyze(filepath, emotionMode = 'both') {
-    const response = await axios.post(
-      `${this.baseURL}/analyze`,
-      { filepath, emotion_mode: emotionMode }
-    );
-    
-    return response.data;
-  }
-  
-  async analyzeFile(filePath, emotionMode = 'both') {
-    // Upload
-    const uploadResult = await this.uploadFile(filePath);
-    if (!uploadResult.success) {
-      throw new Error(`Upload failed: ${uploadResult.error}`);
-    }
-    
-    // Analyze
-    return await this.analyze(uploadResult.filepath, emotionMode);
-  }
-}
-
-// Usage
-(async () => {
-  const client = new EmotiVoiceClient();
-  const result = await client.analyzeFile('recording.wav', 'both');
-  
-  console.log('Transcription:', result.transcription.text);
-  console.log('Dominant emotion:', result.emotions.base[0].label);
-})();
-```
-
-### WebSocket Streaming (JavaScript)
-
-```javascript
-const socket = io('http://localhost:2024');
-let mediaRecorder;
-let chunkIndex = 0;
-
-// Start recording
-async function startRecording() {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  
-  mediaRecorder = new MediaRecorder(stream);
-  
-  mediaRecorder.ondataavailable = (event) => {
-    if (event.data.size > 0) {
-      // Send chunk for analysis
-      socket.emit('streaming_chunk', {
-        audio_data: event.data,
-        chunk_index: chunkIndex++
-      });
-    }
-  };
-  
-  // Record in 2-second chunks
-  mediaRecorder.start(2000);
-}
-
-// Listen for results
-socket.on('streaming_result', (data) => {
-  console.log('Chunk', data.chunk_index);
-  console.log('Transcription:', data.result.transcription);
-  console.log('Emotions:', data.result.emotions);
-});
-
-// Stop recording
-function stopRecording() {
-  mediaRecorder.stop();
-}
-```
-
----
-
-## Rate Limits
-
-### Current Limits (Development)
-
-- **Requests per minute**: Unlimited
-- **File size**: 100MB max
-- **Concurrent WebSocket connections**: 10
-
-### Production Limits (Recommended)
-
-- **Requests per minute**: 60
-- **File size**: 50MB max
-- **Concurrent connections**: 5 per user
-- **Processing queue**: 100 requests
-
-**Rate Limit Headers:**
-```http
-X-RateLimit-Limit: 60
-X-RateLimit-Remaining: 45
-X-RateLimit-Reset: 1640995200
-```
-
----
-
-## Error Handling
-
-### HTTP Status Codes
-
-| Code | Meaning | Description |
-|------|---------|-------------|
-| 200 | OK | Request successful |
-| 400 | Bad Request | Invalid parameters |
-| 404 | Not Found | Resource not found |
-| 413 | Payload Too Large | File size exceeds limit |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Server error |
-
-### Error Response Format
-
-```json
-{
-  "error": "Error message",
-  "code": "ERROR_CODE",
-  "details": {
-    "field": "filepath",
-    "reason": "File not found"
-  }
-}
-```
-
-### Common Error Codes
-
-| Code | Description | Solution |
-|------|-------------|----------|
-| `FILE_NOT_FOUND` | Uploaded file not found | Re-upload file |
-| `INVALID_FILE_TYPE` | Unsupported audio format | Use WAV, MP3, or M4A |
-| `FILE_TOO_LARGE` | File exceeds size limit | Compress or split audio |
-| `PROCESSING_ERROR` | Analysis failed | Check audio quality |
-| `MODEL_NOT_LOADED` | AI model unavailable | Restart server |
-
----
-
-## Best Practices
-
-### 1. Audio File Preparation
-
-```python
-# Recommended audio specifications
-specs = {
-    'format': 'WAV',
-    'sample_rate': 16000,
-    'channels': 1,  # Mono
-    'bit_depth': 16,
-    'duration': '<5 minutes per file'
-}
-```
-
-### 2. Chunking Long Audio
-
-```python
-def split_long_audio(audio_path, chunk_duration=60):
-    """Split audio into manageable chunks"""
-    from pydub import AudioSegment
-    
-    audio = AudioSegment.from_file(audio_path)
-    chunks = []
-    
-    for i in range(0, len(audio), chunk_duration * 1000):
-        chunk = audio[i:i + chunk_duration * 1000]
-        chunk_path = f'chunk_{i//1000}.wav'
-        chunk.export(chunk_path, format='wav')
-        chunks.append(chunk_path)
-    
-    return chunks
-```
-
-### 3. Retry Logic
-
-```python
 import time
 
-def analyze_with_retry(client, filepath, max_retries=3):
-    """Retry analysis on failure"""
-    for attempt in range(max_retries):
-        try:
-            return client.analyze(filepath)
-        except Exception as e:
-            if attempt == max_retries - 1:
-                raise
-            time.sleep(2 ** attempt)  # Exponential backoff
+# 1. Upload file
+with open('audio.wav', 'rb') as f:
+    response = requests.post(
+        'http://localhost:8000/api/v1/upload',
+        files={'file': f}
+    )
+upload_data = response.json()
+filepath = upload_data['filepath']
+
+# 2. Start analysis
+response = requests.post(
+    'http://localhost:8000/api/v1/analyze',
+    json={
+        'filepath': filepath,
+        'emotion_mode': 'both'
+    }
+)
+task_data = response.json()
+task_id = task_data['task_id']
+
+# 3. Poll for results
+while True:
+    response = requests.get(f'http://localhost:8000/api/v1/status/{task_id}')
+    status_data = response.json()
+    
+    if status_data['status'] == 'completed':
+        result = status_data['result']
+        print(f"Transcription: {result['transcription']}")
+        print(f"Dominant Emotion: {result['emotions']['base'][0]['label']}")
+        break
+    
+    time.sleep(2)
+
+# 4. Get explainability
+analysis_id = result['analysis_id']
+response = requests.get(f'http://localhost:8000/api/v1/explain/{analysis_id}')
+explain_data = response.json()
+print(f"Visualizations: {explain_data['visualization_urls']}")
 ```
 
-### 4. Batch Processing
+### Example 2: WebSocket Streaming
 
-```python
-from concurrent.futures import ThreadPoolExecutor
+```javascript
+const socket = io('http://localhost:8000');
 
-def batch_analyze(client, file_paths, max_workers=4):
-    """Process multiple files in parallel"""
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        results = list(executor.map(
-            lambda p: client.analyze_file(p),
-            file_paths
-        ))
-    return results
+// Start recording
+navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(stream => {
+    const mediaRecorder = new RecordRTC(stream, {
+      type: 'audio',
+      mimeType: 'audio/webm',
+      timeSlice: 10000,
+      ondataavailable: (blob) => {
+        socket.emit('streaming_chunk', {
+          audio_data: blob,
+          chunk_index: chunkIndex++
+        });
+      }
+    });
+    
+    mediaRecorder.startRecording();
+  });
+
+// Receive results
+socket.on('streaming_result', (data) => {
+  console.log('Transcription:', data.result.transcription);
+  console.log('Emotions:', data.result.emotions.base);
+});
 ```
 
 ---
 
-## Webhooks (Future Feature)
+## Notes
 
-### Register Webhook
-
-```python
-POST /webhooks/register
-{
-  "url": "https://yourapp.com/webhook",
-  "events": ["analysis_complete", "error"],
-  "secret": "your-webhook-secret"
-}
-```
-
-### Webhook Payload
-
-```json
-{
-  "event": "analysis_complete",
-  "timestamp": "2025-01-15T10:30:00Z",
-  "data": {
-    "filepath": "/path/to/audio.wav",
-    "result": { ... }
-  },
-  "signature": "sha256=..."
-}
-```
+- All timestamps are in UTC ISO 8601 format
+- File paths are server-side paths and should not be manipulated by clients
+- WebSocket connections timeout after 600 seconds of inactivity
+- Analysis results are stored temporarily and may be cleaned up after 24 hours
+- Visualizations are cached with 1-hour TTL
 
 ---
 
-## Support
-
-- **Documentation**: https://docs.emotivoice.ai
-- **API Status**: https://status.emotivoice.ai
-- **GitHub Issues**: https://github.com/yourrepo/issues
-
----
-
-**API Version**: 1.0  
-**Last Updated**: January 2025
+**For support or questions, please refer to the project repository.**
