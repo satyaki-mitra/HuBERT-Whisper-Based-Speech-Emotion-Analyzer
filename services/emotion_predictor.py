@@ -1,4 +1,5 @@
 # DEPENDENCIES
+import os
 import torch
 import torch.nn as nn
 from typing import Dict
@@ -18,6 +19,7 @@ from config.settings import BASE_EMOTIONS
 from utils.logging_util import setup_logger
 from config.settings import COMPLEX_EMOTIONS
 from config.settings import HUBERT_MODEL_PATH
+from huggingface_hub import snapshot_download
 from transformers.file_utils import ModelOutput
 from config.settings import GRANULAR_EMOTION_MAP
 from transformers import Wav2Vec2FeatureExtractor
@@ -83,7 +85,7 @@ class HubertForSpeechClassification(HubertPreTrainedModel):
 
     def merged_strategy(self, hidden_states, mode = "mean"):
         """
-        
+        Pooling strategy determination
         """
         if (mode == "mean"):
             return torch.mean(hidden_states, dim=1)
