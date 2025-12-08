@@ -30,6 +30,8 @@ logs/
 *.log
 
 # Data Files (audio)
+data/
+benchmarks/data/
 uploaded_files/*
 recorded_files/*
 temp_files/*

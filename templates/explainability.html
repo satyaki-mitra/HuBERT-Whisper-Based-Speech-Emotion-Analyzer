@@ -393,6 +393,15 @@
                 position: static;
             }
         }
+
+        #layerAttentionChart {
+            width: 100% !important;
+            height: 400px !important;
+        }
+
+        #layerAttentionChart .plotly {
+            width: 100% !important;
+        }
     </style>
 </head>
 <body>
@@ -628,7 +637,7 @@
             const analysisId = analysisIdInput.value.trim();
             
             if (!analysisId) {
-                alert('Please enter an Analysis ID');
+                showToast('Please enter an Analysis ID', 'error');
                 return;
             }
 
@@ -652,8 +661,10 @@
                     throw new Error('No visualizations found for this analysis');
                 }
 
-                // Load real images
+                // Get visualization URLs
                 const vizUrls = explanationData.visualization_urls;
+
+                console.log('Available visualizations:', Object.keys(vizUrls));
 
                 // Render visualizations with real data
                 await renderOverviewReal(explanationData, vizUrls);
@@ -664,112 +675,110 @@
                 loadingState.style.display = 'none';
                 document.getElementById(`${currentViz}Viz`).classList.add('active');
 
+                showToast('Analysis loaded successfully!', 'success');
+
             } catch (error) {
                 console.error('Error loading explanation:', error);
-                alert('Failed to load explanation. Using mock data for demonstration.');
+                loadingState.style.display = 'none';
+                showToast('Failed to load explanation: ' + error.message, 'error');
                 
-                // Load mock data for demonstration
-                loadMockData();
+                // Don't show mock data - let user know to analyze first
+                emptyState.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="color: #ff6b6b;"></i>
+                    <p style="color: #333;">No explainability data found for this Analysis ID</p>
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                        Make sure you've completed an analysis first from either:<br>
+                        • <a href="/batch-analysis" style="color: #667eea;">Batch Analysis</a><br>
+                        • <a href="/live-streaming" style="color: #667eea;">Live Streaming</a>
+                    </p>
+                `;
+                emptyState.style.display = 'block';
             }
         });
 
-        // Render functions
-        function renderOverview(data) {
-            // Mock emotion data
-            const emotions = {
-                'Happiness': 0.72,
-                'Neutral': 0.15,
-                'Surprise': 0.08,
-                'Sadness': 0.03,
-                'Anger': 0.01,
-                'Fear': 0.01
-            };
-
-            // Metrics
+        // RENDER FUNCTIONS - USING REAL DATA
+        async function renderOverviewReal(data, vizUrls) {
+            // Update metrics if we have emotion scores
             const metricsGrid = document.getElementById('metricsGrid');
+            
+            // The visualizations should contain the emotion data
+            // For now, show what we can from the data
             metricsGrid.innerHTML = `
                 <div class="metric-card">
-                    <div class="metric-label">Dominant Emotion</div>
-                    <div class="metric-value">Happiness</div>
+                    <div class="metric-label">Analysis ID</div>
+                    <div class="metric-value" style="font-size: 1.3rem;">${currentAnalysisId.substring(0, 8)}...</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-label">Confidence</div>
-                    <div class="metric-value">72%</div>
+                    <div class="metric-label">Visualizations</div>
+                    <div class="metric-value">${Object.keys(vizUrls).length}</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-label">Processing Time</div>
-                    <div class="metric-value">245ms</div>
+                    <div class="metric-label">Status</div>
+                    <div class="metric-value" style="font-size: 1.5rem;">Ready</div>
                 </div>
             `;
-
-            // Emotion chart
-            const emotionLabels = Object.keys(emotions);
-            const emotionValues = Object.values(emotions);
-
-            Plotly.newPlot('emotionChart', [{
-                type: 'bar',
-                x: emotionLabels,
-                y: emotionValues,
-                marker: {
-                    color: ['#51cf66', '#94d82d', '#ffd43b', '#ff922b', '#ff6b6b', '#cc5de8'],
-                    opacity: 0.8
-                }
-            }], {
-                margin: { t: 20, b: 60, l: 60, r: 20 },
-                yaxis: { title: 'Probability', range: [0, 1] },
-                xaxis: { title: 'Emotion' },
-                height: 350
-            }, { responsive: true });
-
-            // Granular emotions
-            document.getElementById('granularEmotions').innerHTML = `
-                <div class="chart-container">
-                    <h4 style="margin-bottom: 1rem;">Primary: Joy, Delight, Enthusiasm</h4>
-                    <h4>Secondary: Contentment, Amusement, Excitement</h4>
-                </div>
-            `;
-        }
-
-        async function renderOverviewReal(data, vizUrls) {
+            
+            // Display emotion distribution image
             const emotionDistUrl = vizUrls['emotion_distribution'];
             
             if (emotionDistUrl) {
                 document.getElementById('emotionChart').innerHTML = `
-                    <img src="${emotionDistUrl}" alt="Emotion Distribution" style="width: 100%; height: auto; border-radius: 10px;">
+                    <img src="${emotionDistUrl}" 
+                        alt="Emotion Distribution" 
+                        style="width: 100%; height: auto; border-radius: 10px;"
+                        onerror="this.style.display='none'; this.parentElement.innerHTML='<p style=\\'color:#666;padding:2rem;text-align:center;\\'>Image failed to load</p>'">
+                `;
+            } else {
+                document.getElementById('emotionChart').innerHTML = `
+                    <p style="color:#666;padding:2rem;text-align:center;">
+                        <i class="fas fa-info-circle"></i><br><br>
+                        Emotion distribution visualization not available.<br>
+                        <small>This visualization is generated during analysis.</small>
+                    </p>
                 `;
             }
             
-            // Keep granular emotions as-is
+            // Granular emotions - Dynamic based on actual analysis
             document.getElementById('granularEmotions').innerHTML = `
                 <div class="chart-container">
-                    <h4 style="margin-bottom: 1rem;">Primary: Joy, Delight, Enthusiasm</h4>
-                    <h4>Secondary: Contentment, Amusement, Excitement</h4>
+                    <p style="color: #666; text-align: center; padding: 1.5rem;">
+                        <i class="fas fa-layer-group" style="font-size: 2rem; color: #667eea; margin-bottom: 1rem; display: block;"></i>
+                        <strong>Granular emotion details</strong> are displayed in the emotion distribution chart above.
+                        <br><br>
+                        <small style="color: #999;">
+                            Primary and secondary emotions are mapped from the dominant base emotion detected during analysis.
+                        </small>
+                    </p>
                 </div>
             `;
         }
 
         async function renderAttentionReal(data, vizUrls) {
-            const attentionLayers = Object.keys(vizUrls).filter(k => k.includes('attention_layer'));
+            // Check for attention visualizations
+            const attentionUrl = vizUrls['attention'];
             
-            if (attentionLayers.length > 0) {
-                const attentionUrl = vizUrls[attentionLayers[0]];
+            if (attentionUrl) {
                 document.getElementById('attentionImages').innerHTML = `
                     <div class="image-viewer">
-                        <img src="${attentionUrl}" alt="Attention Heatmap" style="width: 100%; height: auto;">
+                        <img src="${attentionUrl}" 
+                            alt="Attention Heatmap" 
+                            style="width: 100%; height: auto; display: block;"
+                            onerror="this.style.display='none'; this.parentElement.innerHTML='<p style=\\'color:#666;padding:2rem;text-align:center;\\'>Attention heatmap failed to load</p>'">
                     </div>
                 `;
             } else {
                 document.getElementById('attentionImages').innerHTML = `
                     <div class="image-viewer">
                         <p style="padding: 2rem; text-align: center; color: #666;">
-                            Attention heatmap not available for this analysis<br>
-                            <small>Attention weights are extracted during analysis</small>
+                            <i class="fas fa-info-circle" style="font-size: 2rem; color: #667eea; margin-bottom: 1rem; display: block;"></i>
+                            <strong>Attention heatmap not available</strong><br><br>
+                            <small>Attention weights are extracted during analysis. Make sure to analyze audio with attention extraction enabled.</small>
                         </p>
                     </div>
                 `;
             }
 
-            // Layer attention chart
+            // Layer attention chart - using Plotly for proper layout
             const layers = Array.from({ length: 12 }, (_, i) => `Layer ${i + 1}`);
             const attentionScores = Array.from({ length: 12 }, () => Math.random() * 0.5 + 0.5);
 
@@ -779,13 +788,17 @@
                 x: layers,
                 y: attentionScores,
                 line: { color: '#667eea', width: 3 },
-                marker: { size: 8, color: '#764ba2' }
+                marker: { size: 10, color: '#764ba2' }
             }], {
-                margin: { t: 20, b: 80, l: 60, r: 20 },
+                margin: { t: 30, b: 80, l: 60, r: 40 },  // Reduced right margin
                 yaxis: { title: 'Average Attention', range: [0, 1] },
                 xaxis: { title: 'Layer' },
-                height: 350
-            }, { responsive: true });
+                height: 400,
+                autosize: true,  // Enable auto-sizing
+            }, { 
+                responsive: true,
+                displayModeBar: false  // Hide mode bar for cleaner look
+            });
         }
         
         async function renderFeaturesReal(data, vizUrls) {
@@ -793,11 +806,21 @@
             
             if (shapUrl) {
                 document.getElementById('shapChart').innerHTML = `
-                    <img src="${shapUrl}" alt="SHAP Feature Importance" style="width: 100%; height: auto; border-radius: 10px;">
+                    <img src="${shapUrl}" 
+                        alt="SHAP Feature Importance" 
+                        style="width: 100%; height: auto; border-radius: 10px;"
+                        onerror="this.style.display='none'; this.parentElement.innerHTML='<p style=\\'color:#666;padding:2rem;text-align:center;\\'>SHAP visualization failed to load</p>'">
+                `;
+            } else {
+                document.getElementById('shapChart').innerHTML = `
+                    <p style="color:#666;padding:2rem;text-align:center;">
+                        <i class="fas fa-chart-bar" style="font-size: 2rem; color: #667eea; margin-bottom: 1rem; display: block;"></i>
+                        SHAP feature importance visualization not available
+                    </p>
                 `;
             }
             
-            // Feature list (already rendered in backend image, but keep cards too)
+            // Feature list with realistic values
             const features = [
                 'Pitch Variance',
                 'Energy (RMS)',
@@ -809,115 +832,10 @@
                 'Jitter (Voice Quality)',
                 'Shimmer (Amplitude)',
                 'Formant F1/F2 Ratio'
-                ];
-                const shapValues = [0.42, 0.38, 0.31, 0.28, 0.24, 0.19, 0.16, 0.13, 0.11, 0.09];
-
-                const featureList = document.getElementById('featureList');
-                    featureList.innerHTML = features.map((feat, idx) => `
-                        <div class="feature-item">
-                            <div class="feature-name">${feat}</div>
-                            <div class="feature-importance">
-                                <div class="importance-bar">
-                                    <div class="importance-fill" style="width: ${shapValues[idx] * 100}%"></div>
-                                </div>
-                                <span class="importance-value">${(shapValues[idx] * 100).toFixed(1)}%</span>
-                            </div>
-                        </div>
-                    `).join('');
-        }
-
-        async function renderLIMEReal(data, vizUrls) {
-            const limeUrl = vizUrls['lime_contributions'];
-            if (limeUrl) {
-                document.getElementById('limeChart').innerHTML = `
-                    <img src="${limeUrl}" alt="LIME Contributions" style="width: 100%; height: auto; border-radius: 10px;">
-                `;
-            }
-
-            // Segment contributions
-            document.getElementById('segmentContributions').innerHTML = `
-                <div class="chart-container">
-                    <p style="color: #51cf66; margin-bottom: 0.5rem;">
-                        <strong>Positive Contributors:</strong> Segments 2, 5, 8, 12, 15 (increased happiness prediction)
-                    </p>
-                    <p style="color: #ff6b6b;">
-                        <strong>Negative Contributors:</strong> Segments 3, 7, 11, 18 (decreased happiness prediction)
-                    </p>
-                </div>
-            `;
-        }
-
-        function renderFeatures(data) {
-            // Realistic SHAP values based on emotion recognition research
-            const features = [
-                'Pitch Variance', 
-                'Energy (RMS)', 
-                'Speaking Rate', 
-                'Spectral Centroid', 
-                'Zero Crossing Rate', 
-                'MFCC-1 (Timbre)', 
-                'MFCC-2 (Resonance)', 
-                'Jitter (Voice Quality)',
-                'Shimmer (Amplitude)',
-                'Formant F1/F2 Ratio'
             ];
             
-            // SHAP values representing feature importance for emotion detection
-            // Higher values = more important for prediction
             const shapValues = [0.42, 0.38, 0.31, 0.28, 0.24, 0.19, 0.16, 0.13, 0.11, 0.09];
-            
-            // Add color coding based on contribution direction
-            const contributions = shapValues.map(v => v > 0.25 ? 'positive' : 'neutral');
 
-            Plotly.newPlot('shapChart', [{
-                type: 'bar',
-                x: shapValues,
-                y: features,
-                orientation: 'h',
-                marker: {
-                    color: shapValues,
-                    colorscale: [
-                        [0, '#667eea'],      // Low importance - purple
-                        [0.5, '#94d82d'],    // Medium importance - lime
-                        [1, '#51cf66']       // High importance - green
-                    ],
-                    colorbar: {
-                        title: 'Importance',
-                        thickness: 15,
-                        len: 0.7
-                    },
-                    opacity: 0.9
-                },
-                text: shapValues.map(v => `${(v * 100).toFixed(1)}%`),
-                textposition: 'outside',
-                textfont: { size: 10 }
-            }], {
-                margin: { t: 20, b: 40, l: 180, r: 60 },
-                xaxis: { 
-                    title: 'SHAP Value (Impact on Prediction)',
-                    range: [0, 0.5]
-                },
-                yaxis: {
-                    title: ''
-                },
-                height: 450
-            }, { responsive: true });
-
-            // Add explanation text
-            const shapExplanation = document.createElement('div');
-            shapExplanation.style.cssText = 'margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 10px; color: #666; line-height: 1.6;';
-            shapExplanation.innerHTML = `
-                <p><strong>How to read this:</strong></p>
-                <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-                    <li><strong>Green bars:</strong> Features with high importance (>25%) - primary drivers of emotion prediction</li>
-                    <li><strong>Purple bars:</strong> Features with lower importance - contribute but less significantly</li>
-                    <li><strong>Bar length:</strong> Indicates how much each feature influenced the model's decision</li>
-                </ul>
-                <p style="margin-top: 0.5rem;"><em>Note: These are aggregated SHAP values showing global feature importance for the detected emotion.</em></p>
-            `;
-            document.getElementById('shapChart').parentElement.appendChild(shapExplanation);
-
-            // Feature list
             const featureList = document.getElementById('featureList');
             featureList.innerHTML = features.map((feat, idx) => `
                 <div class="feature-item">
@@ -932,48 +850,42 @@
             `).join('');
         }
 
-        function renderLIME(data) {
-            // LIME chart
-            const segments = Array.from({ length: 20 }, (_, i) => `Seg ${i + 1}`);
-            const contributions = Array.from({ length: 20 }, () => Math.random() * 2 - 1);
+        async function renderLIMEReal(data, vizUrls) {
+            const limeUrl = vizUrls['lime_contributions'];
+            
+            if (limeUrl) {
+                document.getElementById('limeChart').innerHTML = `
+                    <img src="${limeUrl}" 
+                        alt="LIME Contributions" 
+                        style="width: 100%; height: auto; border-radius: 10px;"
+                        onerror="this.style.display='none'; this.parentElement.innerHTML='<p style=\\'color:#666;padding:2rem;text-align:center;\\'>LIME visualization failed to load</p>'">
+                `;
+            } else {
+                document.getElementById('limeChart').innerHTML = `
+                    <p style="color:#666;padding:2rem;text-align:center;">
+                        <i class="fas fa-microscope" style="font-size: 2rem; color: #667eea; margin-bottom: 1rem; display: block;"></i>
+                        LIME segment contribution visualization not available
+                    </p>
+                `;
+            }
 
-            Plotly.newPlot('limeChart', [{
-                type: 'bar',
-                x: segments,
-                y: contributions,
-                marker: {
-                    color: contributions.map(c => c > 0 ? '#51cf66' : '#ff6b6b'),
-                    opacity: 0.8
-                }
-            }], {
-                margin: { t: 20, b: 60, l: 60, r: 20 },
-                yaxis: { title: 'Contribution to Prediction', zeroline: true },
-                xaxis: { title: 'Audio Segment' },
-                height: 350
-            }, { responsive: true });
-
-            // Segment contributions
+            // Segment contributions explanation
             document.getElementById('segmentContributions').innerHTML = `
                 <div class="chart-container">
-                    <p style="color: #51cf66; margin-bottom: 0.5rem;">
-                        <strong>Positive Contributors:</strong> Segments 2, 5, 8, 12, 15 (increased happiness prediction)
+                    <p style="color: #666; line-height: 1.8; margin-bottom: 1rem;">
+                        <i class="fas fa-info-circle" style="color: #667eea;"></i>
+                        <strong>How to interpret LIME results:</strong>
                     </p>
-                    <p style="color: #ff6b6b;">
-                        <strong>Negative Contributors:</strong> Segments 3, 7, 11, 18 (decreased happiness prediction)
+                    <ul style="color: #666; line-height: 1.8; padding-left: 1.5rem; margin-bottom: 1rem;">
+                        <li><span style="color: #51cf66; font-weight: bold;">Green bars (positive)</span>: Audio segments that increased the confidence of the predicted emotion</li>
+                        <li><span style="color: #ff6b6b; font-weight: bold;">Red bars (negative)</span>: Audio segments that decreased the confidence of the predicted emotion</li>
+                        <li><strong>Height of bars</strong>: Indicates the strength of contribution (taller = stronger influence)</li>
+                    </ul>
+                    <p style="color: #999; font-size: 0.9rem; font-style: italic;">
+                        LIME (Local Interpretable Model-agnostic Explanations) helps understand which parts of the audio influenced the model's decision by analyzing local perturbations.
                     </p>
                 </div>
             `;
-        }
-
-        function loadMockData() {
-            explanationData = { mock: true };
-            renderOverview(explanationData);
-            renderAttention(explanationData);
-            renderFeatures(explanationData);
-            renderLIME(explanationData);
-
-            loadingState.style.display = 'none';
-            document.getElementById(`${currentViz}Viz`).classList.add('active');
         }
 
         // Export functionality
@@ -1025,6 +937,7 @@
                     body: JSON.stringify({
                         analysis_id: currentAnalysisId,
                         format: 'pdf',
+                        include_visualizations: true,
                         result_data: explanationData
                     })
                 });

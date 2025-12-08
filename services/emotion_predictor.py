@@ -254,6 +254,7 @@ class EmotionPredictor:
         base_emotions_display  = base_emotions['display']
 
         result                 = {'base'      : base_emotions_display,
+                                  'raw'       : base_emotions_raw,
                                   'primary'   : None,
                                   'secondary' : None,
                                   'complex'   : [],
@@ -289,7 +290,7 @@ class EmotionPredictor:
                                     )
 
         if (len(sorted_emotions_raw) >= 2):
-            top_two = tuple(sorted([sorted_emotions_raw[0][0], sorted_emotions_raw[1][0],]))
+            top_two = tuple(sorted([sorted_emotions_raw[0][0], sorted_emotions_raw[1][0]]))
             
             for emotion_pair, complex_name in COMPLEX_EMOTIONS.items():
                 if (set(top_two) == set(emotion_pair)):
@@ -319,7 +320,9 @@ class EmotionPredictor:
         base_emotions_result = self.predict_base_emotions(audio_path = audio_path)
         
         if (mode == 'base'):
-            return {'base' : base_emotions_result['display']}
+            return {'base' : base_emotions_result['display'],
+                    'raw'  : base_emotions_result['raw'],
+                   }
         
         elif (mode in ['granular', 'both']):
             granular_result = self.predict_granular_emotions(base_emotions = base_emotions_result)
