@@ -20,10 +20,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p data/uploaded_files data/recorded_files data/temp_files \
-    logs exports/visualizations models/hubert models/whisper
+RUN mkdir -p data/uploaded_files data/recorded_files data/temp_files logs exports/visualizations models/hubert models/whisper
 
-# Download models from HuggingFace (this happens at build time)
+# Download models from HuggingFace
 RUN python -c "from transformers import AutoModel, AutoFeatureExtractor; \
     AutoModel.from_pretrained('facebook/hubert-base-ls960', cache_dir='models/hubert'); \
     AutoFeatureExtractor.from_pretrained('facebook/hubert-base-ls960', cache_dir='models/hubert')"
@@ -31,12 +30,11 @@ RUN python -c "from transformers import AutoModel, AutoFeatureExtractor; \
 # Download Whisper model
 RUN python -c "import whisper; whisper.load_model('large-v3', download_root='models/whisper')"
 
-# Set environment variables for HF Spaces
+# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV HOST=0.0.0.0
 ENV PORT=7860
 ENV DEVICE=cpu
-ENV DEBUG=False
 
 # Expose port for HuggingFace Spaces
 EXPOSE 7860
