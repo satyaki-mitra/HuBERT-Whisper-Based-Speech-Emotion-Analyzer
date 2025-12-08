@@ -29,17 +29,29 @@ ENV/
 logs/
 *.log
 
+# Sample audio files (for testing only, not for deployment)
+sample_audios/
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.flac
+
+
+# Model files (downloaded at Docker build)
+models/hubert/*
+models/whisper/*
+!models/**/.gitkeep
+
 # Data Files (audio)
 sample_audios/
 exports/
 data/
 benchmarks/data/
-uploaded_files/*
-recorded_files/*
-temp_files/*
-!uploaded_files/.gitkeep
-!recorded_files/.gitkeep
-!temp_files/.gitkeep
+data/uploaded_files/*
+data/recorded_files/*
+data/temp_files/*
+!data/**/.gitkeep
 
 # Model Files (too large)
 models/
