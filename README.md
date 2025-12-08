@@ -1,3 +1,15 @@
+---
+title: EmotiVoice
+emoji: 🐠
+colorFrom: yellow
+colorTo: yellow
+sdk: docker
+pinned: false
+license: mit
+short_description: 'An implementation of  SER using HuBERT and Whisper '
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
 # 🎙️ EmotiVoice - AI Speech Emotion Recognition Platform
 
 A production-ready, industry-standard **Speech Emotion Recognition (SER)** platform powered by **HuBERT** and **Whisper** AI, featuring modern UI/UX, real-time streaming, and granular emotion analysis.
